@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+{% block title %}{{ project.name }} - Pentest AI Platform{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">{{ project.name }}</h1>
+        <p class="page-subtitle">{{ project.description or 'No description' }}</p>
+    </div>
+    <div style="display: flex; gap: 0.5rem;">
+        <a href="{{ url_for('projects.edit_project', project_id=project.id) }}" class="btn btn-secondary">Edit</a>
+        <form method="POST" action="{{ url_for('projects.delete_project', project_id=project.id) }}" style="display: inline;" onsubmit="return confirm('Delete this project and all its data?');">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="btn btn-danger">Delete Project</button>
+        </form>
+    </div>
+</div>
+
+<!-- Stats -->
+<div class="stats-grid">
+    <div class="stat-card stat-critical">
+        <div class="stat-value">{{ findings_summary.get('critical', 0) }}</div>
+        <div class="stat-label">Critical</div>
+    </div>
+    <div class="stat-card stat-high">
+        <div class="stat-value">{{ findings_summary.get('high', 0) }}</div>
+        <div class="stat-label">High</div>
+    </div>
+    <div class="stat-card stat-medium">
+        <div class="stat-value">{{ findings_summary.get('medium', 0) }}</div>
+        <div class="stat-label">Medium</div>
+    </div>
+    <div class="stat-card stat-low">
+        <div class="stat-value">{{ findings_summary.get('low', 0) }}</div>
+        <div class="stat-label">Low</div>
+    </div>
+</div>
+
+<!-- Targets -->
+<div class="card" style="margin-bottom: 1.5rem;">
+    <div class="card-header">
+        <h2 class="card-title">Targets</h2>
+        <button onclick="document.getElementById('add-target-form').style.display='block'" class="btn btn-outline btn-sm">Add Target</button>
+    </div>
+
+    <!-- Add Target Form (hidden by default) -->
+    <div id="add-target-form" style="display: none; margin-bottom: 1rem; padding: 1rem; background: var(--bg-secondary); border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+        <form method="POST" action="{{ url_for('projects.add_target', project_id=project.id) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div style="display: flex; gap: 0.75rem; align-items: flex-end;">
+                <div class="form-group" style="flex: 1; margin-bottom: 0;">
+                    <label class="form-label" for="value">Target</label>
+                    <input type="text" id="value" name="value" class="form-input" placeholder="e.g., example.com" required>
+                </div>
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label class="form-label" for="type">Type</label>
+                    <select id="type" name="type" class="form-select">
+                        <option value="domain">Domain</option>
+                        <option value="ip">IP Address</option>
+                        <option value="url">URL</option>
+                        <option value="cidr">CIDR</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn btn-primary btn-sm">Add</button>
+            </div>
+        </form>
+    </div>
+
+    <div class="card-body">
+        {% if targets %}
+        <div class="table-container">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Target</th>
+                        <th>Type</th>
+                        <th>Scans</th>
+                        <th>Added</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for target in targets %}
+                    <tr>
+                        <td style="font-family: var(--font-mono); color: var(--accent-cyan);">{{ target.value }}</td>
+                        <td><span class="badge badge-info">{{ target.type }}</span></td>
+                        <td>{{ target.get_scan_count() }}</td>
+                        <td style="color: var(--text-muted);">{{ target.created_at.strftime('%b %d') }}</td>
+                        <td>
+                            <div style="display: flex; gap: 0.25rem;">
+                                <form method="POST" action="{{ url_for('projects.edit_target', project_id=project.id, target_id=target.id) }}" style="display: inline-flex; gap: 0.25rem; align-items: center;">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <input type="text" name="value" value="{{ target.value }}" class="form-input" style="font-size: 0.75rem; padding: 0.2rem 0.4rem; width: 120px;">
+                                    <select name="type" class="form-select" style="font-size: 0.75rem; padding: 0.2rem;">
+                                        <option value="domain" {% if target.type == 'domain' %}selected{% endif %}>Domain</option>
+                                        <option value="ip" {% if target.type == 'ip' %}selected{% endif %}>IP</option>
+                                        <option value="url" {% if target.type == 'url' %}selected{% endif %}>URL</option>
+                                        <option value="cidr" {% if target.type == 'cidr' %}selected{% endif %}>CIDR</option>
+                                    </select>
+                                    <button type="submit" class="btn btn-outline btn-sm" style="font-size: 0.7rem; padding: 0.15rem 0.4rem;">Save</button>
+                                </form>
+                                <form method="POST" action="{{ url_for('projects.delete_target', project_id=project.id, target_id=target.id) }}" style="display: inline;" onsubmit="return confirm('Delete this target?');">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button type="submit" class="btn btn-danger btn-sm" style="font-size: 0.7rem; padding: 0.15rem 0.4rem;">Delete</button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <p>No targets added yet. Add a domain, IP, or URL to scan.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

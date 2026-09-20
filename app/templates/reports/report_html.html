@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title }}</title>
+    <style>
+        /* === Reset & Base === */
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        html { font-size: 14px; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #e0e0e0;
+            background: #0d1117;
+            padding: 0;
+        }
+
+        /* === Cover Page === */
+        .cover-page {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            padding: 4rem 2rem;
+            background: linear-gradient(135deg, #0d1117 0%, #161b22 50%, #0d1117 100%);
+            border-bottom: 3px solid #58a6ff;
+            page-break-after: always;
+        }
+        .cover-page .shield-icon {
+            font-size: 4rem;
+            margin-bottom: 2rem;
+        }
+        .cover-page h1 {
+            font-size: 2.5rem;
+            color: #58a6ff;
+            margin-bottom: 1rem;
+            letter-spacing: 1px;
+        }
+        .cover-page .project-name {
+            font-size: 1.8rem;
+            color: #f0f0f0;
+            margin-bottom: 2rem;
+        }
+        .cover-page .meta-info {
+            color: #8b949e;
+            font-size: 1rem;
+            margin-bottom: 0.5rem;
+        }
+        .cover-page .classification {
+            margin-top: 3rem;
+            padding: 0.75rem 2rem;
+            border: 2px solid #f85149;
+            color: #f85149;
+            font-weight: 700;
+            font-size: 1.1rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+
+        /* === Content Container === */
+        .content {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        /* === Section === */
+        .section {
+            margin-bottom: 3rem;
+            page-break-inside: avoid;
+        }
+        .section-title {
+            font-size: 1.5rem;
+            color: #58a6ff;
+            border-bottom: 2px solid #21262d;
+            padding-bottom: 0.5rem;
+            margin-bottom: 1.5rem;
+        }
+        .section-number {
+            color: #8b949e;
+            margin-right: 0.5rem;
+        }
+
+        /* === Paragraphs === */
+        p { margin-bottom: 1rem; color: #c9d1d9; }
+
+        /* === Risk Level === */
+        .risk-badge {
+            display: inline-block;
+            padding: 0.5rem 1.5rem;
+            border-radius: 4px;
+            font-weight: 700;
+            font-size: 1.2rem;
+            letter-spacing: 2px;
+            margin: 1rem 0;
+        }
+        .risk-critical { background: #490202; color: #f85149; border: 1px solid #f85149; }
+        .risk-high { background: #4a2400; color: #f0883e; border: 1px solid #f0883e; }
+        .risk-moderate { background: #342500; color: #d29922; border: 1px solid #d29922; }
+        .risk-low { background: #0c2d1f; color: #3fb950; border: 1px solid #3fb950; }
+        .risk-minimal { background: #0c2040; color: #58a6ff; border: 1px solid #58a6ff; }
+
+        /* === Severity Distribution === */
+        .severity-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 1rem;
+            margin: 1.5rem 0;
+        }
+        .severity-card {
+            text-align: center;
+            padding: 1.5rem 1rem;
+            border-radius: 6px;
+            border: 1px solid #21262d;
+        }
+        .severity-card .count {
+            font-size: 2.5rem;
+            font-weight: 700;
+            display: block;
+        }
+        .severity-card .label {
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-top: 0.25rem;
+        }
+        .severity-critical { background: #1a0505; }
+        .severity-critical .count { color: #f85149; }
+        .severity-critical .label { color: #f85149; }
+        .severity-high { background: #1a0e00; }
+        .severity-high .count { color: #f0883e; }
+        .severity-high .label { color: #f0883e; }
+        .severity-medium { background: #1a1400; }
+        .severity-medium .count { color: #d29922; }
+        .severity-medium .label { color: #d29922; }
+        .severity-low { background: #051a0e; }
+        .severity-low .count { color: #3fb950; }
+        .severity-low .label { color: #3fb950; }
+        .severity-info { background: #05101a; }
+        .severity-info .count { color: #58a6ff; }
+        .severity-info .label { color: #58a6ff; }
+
+        /* === Tables === */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1rem 0;
+        }
+        th, td {
+            padding: 0.75rem 1rem;
+            text-align: left;
+            border-bottom: 1px solid #21262d;
+        }
+        th {
+            background: #161b22;
+            color: #8b949e;
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 0.8rem;
+            letter-spacing: 0.5px;
+        }
+        td { color: #c9d1d9; font-size: 0.9rem; }
+        tr:hover { background: #161b22; }
+
+        /* === Severity Badges === */
+        .badge {
+            display: inline-block;
+            padding: 0.2rem 0.6rem;
+            border-radius: 3px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .badge-critical { background: #490202; color: #f85149; }
+        .badge-high { background: #4a2400; color: #f0883e; }
+        .badge-medium { background: #342500; color: #d29922; }
+        .badge-low { background: #0c2d1f; color: #3fb950; }
+        .badge-info { background: #0c2040; color: #58a6ff; }
+
+        /* === Finding Detail Cards === */
+        .finding-card {
+            background: #161b22;
+            border: 1px solid #21262d;
+            border-radius: 6px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            page-break-inside: avoid;
+        }
+        .finding-card .finding-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+        .finding-card .finding-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #f0f0f0;
+        }
+        .finding-card .finding-field {
+            margin-bottom: 0.5rem;
+        }
+        .finding-card .field-label {
+            color: #8b949e;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            display: block;
+            margin-bottom: 0.15rem;
+        }
+        .finding-card .field-value {
+            color: #c9d1d9;
+            font-size: 0.9rem;
+        }
+        .finding-card .field-value.mono {
+            font-family: 'Courier New', Courier, monospace;
+            background: #0d1117;
+            padding: 0.5rem 0.75rem;
+            border-radius: 4px;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+
+        /* === Remediation Card === */
+        .remediation-card {
+            background: #0c2d1f;
+            border: 1px solid #238636;
+            border-radius: 6px;
+            padding: 1.25rem;
+            margin-bottom: 1rem;
+        }
+        .remediation-card .rem-header {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 0.75rem;
+        }
+        .remediation-card .rem-title {
+            font-weight: 600;
+            color: #3fb950;
+        }
+        .remediation-card .rem-text {
+            color: #c9d1d9;
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+
+        /* === Scope List === */
+        .scope-list {
+            list-style: none;
+            padding: 0;
+        }
+        .scope-list li {
+            padding: 0.5rem 0;
+            border-bottom: 1px solid #21262d;
+            color: #c9d1d9;
+        }
+        .scope-list li:last-child { border-bottom: none; }
+        .scope-label {
+            color: #8b949e;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-right: 0.75rem;
+        }
+
+        /* === TOC === */
+        .toc { list-style: none; padding: 0; }
+        .toc li {
+            padding: 0.5rem 0;
+            border-bottom: 1px solid #21262d;
+        }
+        .toc li a {
+            color: #58a6ff;
+            text-decoration: none;
+        }
+        .toc li a:hover { text-decoration: underline; }
+
+        /* === Executive Summary Box === */
+        .exec-summary-box {
+            background: #161b22;
+            border-left: 4px solid #58a6ff;
+            padding: 1.5rem;
+            margin: 1rem 0;
+            border-radius: 0 6px 6px 0;
+        }
+        .exec-summary-box p {
+            white-space: pre-line;
+        }
+
+        /* === Page Break === */
+        .page-break { page-break-before: always; }
+
+        /* === Footer === */
+        .report-footer {
+            text-align: center;
+            padding: 2rem;
+            color: #484f58;
+            font-size: 0.8rem;
+            border-top: 1px solid #21262d;
+            margin-top: 3rem;
+        }
+
+        /* === Print Styles === */
+        @media print {
+            body { background: #fff; color: #000; }
+            .cover-page { background: #f5f5f5; }
+            .cover-page h1 { color: #0056b3; }
+            .section-title { color: #0056b3; border-bottom-color: #ccc; }
+            th { background: #eee; color: #333; }
+            td { color: #333; border-bottom-color: #ddd; }
+            .severity-card { border-color: #ddd; }
+            .finding-card { background: #f9f9f9; border-color: #ddd; }
+            .badge { color: #000 !important; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- Cover Page -->
+<div class="cover-page">
+    <div class="shield-icon">&#x1F6E1;</div>
+    <h1>Penetration Test Report</h1>
+    <div class="project-name">{{ project.name if project else 'Security Assessment' }}</div>
+    <div class="meta-info">{{ target.value if target else 'Target Assessment' }}</div>
+    <div class="meta-info">{{ generated_at }}</div>
+    <div class="meta-info">Scan: {{ scan.name }} ({{ scan.scan_type }})</div>
+    <div class="classification">CONFIDENTIAL</div>
+</div>
+
+<!-- Table of Contents -->
+<div class="content">
+    <div class="section">
+        <h2 class="section-title"><span class="section-number">0</span>Table of Contents</h2>
+        <ul class="toc">
+            {% if includes_executive_summary %}
+            <li><a href="#executive-summary">1. Executive Summary</a></li>
+            {% endif %}
+            <li><a href="#scope-methodology">2. Scope &amp; Methodology</a></li>
+            <li><a href="#findings-overview">3. Findings Overview</a></li>
+            <li><a href="#findings-detail">4. Detailed Vulnerabilities</a></li>
+            {% if includes_remediation %}
+            <li><a href="#remediation">5. Remediation Recommendations</a></li>
+            {% endif %}
+        </ul>
+    </div>
+
+    {% if includes_executive_summary %}
+    <!-- Executive Summary -->
+    <div class="section" id="executive-summary">
+        <h2 class="section-title"><span class="section-number">1</span>Executive Summary</h2>
+        <div class="exec-summary-box">
+            <p>{{ executive_summary }}</p>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Scope & Methodology -->
+    <div class="section" id="scope-methodology">
+        <h2 class="section-title"><span class="section-number">2</span>Scope &amp; Methodology</h2>
+        <ul class="scope-list">
+            <li><span class="scope-label">Target:</span> {{ target.value if target else 'N/A' }}</li>
+            <li><span class="scope-label">Target Type:</span> {{ target.type if target else 'N/A' }}</li>
+            <li><span class="scope-label">Project:</span> {{ project.name if project else 'N/A' }}</li>
+            <li><span class="scope-label">Scan Type:</span> {{ scan.scan_type }}</li>
+            <li><span class="scope-label">Scan Status:</span> {{ scan.status }}</li>
+            <li><span class="scope-label">Started:</span> {{ scan.started_at.strftime('%Y-%m-%d %H:%M UTC') if scan.started_at else 'N/A' }}</li>
+            <li><span class="scope-label">Completed:</span> {{ scan.completed_at.strftime('%Y-%m-%d %H:%M UTC') if scan.completed_at else 'N/A' }}</li>
+            <li><span class="scope-label">Total Jobs:</span> {{ scan.total_jobs }}</li>
+            <li><span class="scope-label">Completed Jobs:</span> {{ scan.completed_jobs }}</li>
+            <li><span class="scope-label">Failed Jobs:</span> {{ scan.failed_jobs }}</li>
+        </ul>
+        <h3 style="color: #8b949e; margin-top: 1.5rem; margin-bottom: 0.75rem;">Methodology</h3>
+        <p>
+            This assessment was conducted using automated security scanning tools configured
+            for {{ scan.scan_type }} testing. The scan utilized a combination of reconnaissance
+            and vulnerability assessment tools to identify potential security weaknesses in the
+            target system. All findings should be validated manually before remediation.
+        </p>
+    </div>
+
+    <!-- Findings Overview -->
+    <div class="section" id="findings-overview">
+        <h2 class="section-title"><span class="section-number">3</span>Findings Overview</h2>
+        <div class="severity-grid">
+            <div class="severity-card severity-critical">
+                <span class="count">{{ severity_counts.get('critical', 0) }}</span>
+                <span class="label">Critical</span>
+            </div>
+            <div class="severity-card severity-high">
+                <span class="count">{{ severity_counts.get('high', 0) }}</span>
+                <span class="label">High</span>
+            </div>
+            <div class="severity-card severity-medium">
+                <span class="count">{{ severity_counts.get('medium', 0) }}</span>
+                <span class="label">Medium</span>
+            </div>
+            <div class="severity-card severity-low">
+                <span class="count">{{ severity_counts.get('low', 0) }}</span>
+                <span class="label">Low</span>
+            </div>
+            <div class="severity-card severity-info">
+                <span class="count">{{ severity_counts.get('info', 0) }}</span>
+                <span class="label">Info</span>
+            </div>
+        </div>
+
+        {% if findings %}
+        <h3 style="color: #8b949e; margin-top: 1.5rem; margin-bottom: 0.75rem;">Findings Summary Table</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Severity</th>
+                    <th>Title</th>
+                    <th>Category</th>
+                    <th>Tool</th>
+                    <th>URL</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for finding in findings %}
+                <tr>
+                    <td>{{ loop.index }}</td>
+                    <td><span class="badge badge-{{ finding.severity }}">{{ finding.severity|upper }}</span></td>
+                    <td>{{ finding.title[:80] }}</td>
+                    <td>{{ finding.category }}</td>
+                    <td>{{ finding.tool_name }}</td>
+                    <td style="max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ finding.url or '-' }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p>No findings were identified during this assessment.</p>
+        {% endif %}
+    </div>
+
+    <!-- Detailed Vulnerabilities -->
+    <div class="section page-break" id="findings-detail">
+        <h2 class="section-title"><span class="section-number">4</span>Detailed Vulnerabilities</h2>
+        {% if findings %}
+            {% for finding in findings %}
+            <div class="finding-card">
+                <div class="finding-header">
+                    <span class="finding-title">{{ loop.index }}. {{ finding.title }}</span>
+                    <span class="badge badge-{{ finding.severity }}">{{ finding.severity|upper }}</span>
+                </div>
+                {% if finding.description %}
+                <div class="finding-field">
+                    <span class="field-label">Description</span>
+                    <span class="field-value">{{ finding.description }}</span>
+                </div>
+                {% endif %}
+                <div class="finding-field">
+                    <span class="field-label">Category</span>
+                    <span class="field-value">{{ finding.category }}</span>
+                </div>
+                <div class="finding-field">
+                    <span class="field-label">Detected By</span>
+                    <span class="field-value">{{ finding.tool_name }}</span>
+                </div>
+                {% if finding.url %}
+                <div class="finding-field">
+                    <span class="field-label">URL</span>
+                    <span class="field-value mono">{{ finding.url }}</span>
+                </div>
+                {% endif %}
+                {% if finding.parameter %}
+                <div class="finding-field">
+                    <span class="field-label">Parameter</span>
+                    <span class="field-value mono">{{ finding.parameter }}</span>
+                </div>
+                {% endif %}
+                {% if finding.payload %}
+                <div class="finding-field">
+                    <span class="field-label">Payload</span>
+                    <span class="field-value mono">{{ finding.payload }}</span>
+                </div>
+                {% endif %}
+                {% if finding.evidence %}
+                <div class="finding-field">
+                    <span class="field-label">Evidence</span>
+                    <span class="field-value mono">{{ finding.evidence }}</span>
+                </div>
+                {% endif %}
+                {% if finding.cvss_score %}
+                <div class="finding-field">
+                    <span class="field-label">CVSS Score</span>
+                    <span class="field-value">{{ finding.cvss_score }}</span>
+                </div>
+                {% endif %}
+                {% if finding.cve_id %}
+                <div class="finding-field">
+                    <span class="field-label">CVE ID</span>
+                    <span class="field-value">{{ finding.cve_id }}</span>
+                </div>
+                {% endif %}
+                <div class="finding-field">
+                    <span class="field-label">Confidence</span>
+                    <span class="field-value">{{ finding.confidence }}</span>
+                </div>
+                {% if finding.is_false_positive %}
+                <div class="finding-field">
+                    <span class="field-label">Note</span>
+                    <span class="field-value" style="color: #d29922;">Marked as potential false positive</span>
+                </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        {% else %}
+        <p>No findings were identified during this assessment.</p>
+        {% endif %}
+    </div>
+
+    {% if includes_remediation and remediation_recommendations %}
+    <!-- Remediation Recommendations -->
+    <div class="section page-break" id="remediation">
+        <h2 class="section-title"><span class="section-number">5</span>Remediation Recommendations</h2>
+        <p>The following remediation recommendations are provided in order of priority, based on finding severity.</p>
+        {% for rec in remediation_recommendations %}
+        <div class="remediation-card">
+            <div class="rem-header">
+                <span class="badge badge-{{ rec.severity }}">{{ rec.severity|upper }}</span>
+                <span class="rem-title">{{ rec.title }}</span>
+            </div>
+            <div class="rem-text">{{ rec.recommendation }}</div>
+            {% if rec.url %}
+            <div style="margin-top: 0.5rem; font-family: 'Courier New', monospace; font-size: 0.8rem; color: #8b949e;">{{ rec.url }}</div>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Footer -->
+    <div class="report-footer">
+        <p>This report was generated automatically by the Pentest AI Platform.</p>
+        <p>{{ generated_at }} &middot; CONFIDENTIAL - For authorized recipients only</p>
+    </div>
+</div>
+
+</body>
+</html>

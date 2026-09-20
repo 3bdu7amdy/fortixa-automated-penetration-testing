@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block title %}Reports - Pentest AI Platform{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Reports</h1>
+        <p class="page-subtitle">Generated security assessment reports</p>
+    </div>
+    <div>
+        <a href="{{ url_for('reports.generate_report') }}" class="btn btn-primary btn-sm">Generate Report</a>
+    </div>
+</div>
+
+{% if reports %}
+<div class="card">
+    <div class="table-container">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Title</th>
+                    <th>Format</th>
+                    <th>Findings</th>
+                    <th>Severity</th>
+                    <th>Generated</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for report in reports %}
+                <tr>
+                    <td>
+                        <a href="{{ url_for('reports.view_report', report_id=report.id) }}">{{ report.title }}</a>
+                    </td>
+                    <td>
+                        <span class="badge badge-{{ 'info' if report.format == 'json' else 'success' if report.format == 'html' else 'warning' }}">{{ report.format|upper }}</span>
+                    </td>
+                    <td>{{ report.finding_count }}</td>
+                    <td>
+                        {% if report.critical_count %}<span class="badge badge-critical">{{ report.critical_count }}C</span>{% endif %}
+                        {% if report.high_count %}<span class="badge badge-high">{{ report.high_count }}H</span>{% endif %}
+                        {% if report.medium_count %}<span class="badge badge-medium">{{ report.medium_count }}M</span>{% endif %}
+                        {% if report.low_count %}<span class="badge badge-low">{{ report.low_count }}L</span>{% endif %}
+                        {% if report.info_count %}<span class="badge badge-info">{{ report.info_count }}I</span>{% endif %}
+                    </td>
+                    <td style="font-size: 0.85rem;">{{ report.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                    <td>
+                        <a href="{{ url_for('reports.download_report', report_id=report.id) }}" class="btn btn-outline btn-sm">Download</a>
+                        <form method="POST" action="{{ url_for('reports.delete_report', report_id=report.id) }}" style="display: inline;">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Delete this report?')">Delete</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% else %}
+<div class="card">
+    <div class="card-body" style="text-align: center; padding: 3rem;">
+        <p style="color: var(--text-muted); margin-bottom: 1rem;">No reports generated yet.</p>
+        <a href="{{ url_for('reports.generate_report') }}" class="btn btn-primary">Generate Your First Report</a>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

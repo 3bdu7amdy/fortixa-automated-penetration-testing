@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block title %}Scans - Pentest AI Platform{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Scans</h1>
+        <p class="page-subtitle">Monitor and manage your security scans</p>
+    </div>
+    <div>
+        <a href="{{ url_for('scans.start_pipeline_scan') }}" class="btn btn-primary" style="margin-right: 8px;">🚀 New Pipeline Scan</a>
+        <a href="{{ url_for('scans.start_scan') }}" class="btn btn-secondary">+ New Scan (manual)</a>
+    </div>
+</div>
+
+{% if scans %}
+<div class="table-container">
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Scan Name</th>
+                <th>Type</th>
+                <th>Status</th>
+                <th>Progress</th>
+                <th>Findings</th>
+                <th>Started</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for scan in scans %}
+            <tr>
+                <td>
+                    <a href="{{ url_for('scans.view_scan', scan_id=scan.id) }}">{{ scan.name }}</a>
+                    {% if scan.pipeline_mode %}
+                    <span class="badge badge-pipeline" style="margin-left: 6px;">PIPELINE</span>
+                    {% endif %}
+                </td>
+                <td><span class="badge badge-info">{{ scan.scan_type }}</span></td>
+                <td>
+                    <span class="badge badge-{{ 'success' if scan.status == 'completed' else 'warning' if scan.status == 'running' else 'danger' if scan.status == 'failed' else 'secondary' }}">
+                        {{ scan.status }}
+                    </span>
+                </td>
+                <td>
+                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                        <div class="progress-bar" style="width: 100px;">
+                            <div class="progress-fill progress-{{ 'success' if scan.status == 'completed' else 'info' if scan.status == 'running' else 'warning' }}"
+                                 style="width: {{ scan.progress_percentage }}%"></div>
+                        </div>
+                        <span style="font-size: 0.8rem; color: var(--text-muted);">{{ scan.progress_percentage }}%</span>
+                    </div>
+                </td>
+                <td>{{ scan.findings.count() }}</td>
+                <td style="color: var(--text-muted);">{{ scan.created_at.strftime('%b %d, %H:%M') }}</td>
+                <td>
+                    <a href="{{ url_for('scans.view_scan', scan_id=scan.id) }}" class="btn btn-outline btn-sm">View</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<div class="empty-state">
+    <div class="empty-state-icon">&#x1F50D;</div>
+    <h3 class="empty-state-title">No Scans Yet</h3>
+    <p class="empty-state-text">Start your first scan to discover vulnerabilities.</p>
+    <a href="{{ url_for('scans.start_scan') }}" class="btn btn-primary">Start Scan</a>
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,11 @@
+{
+  "api_keys": {},
+  "selected_provider": "zai",
+  "selected_models": {
+    "openai": "gpt-4o-mini",
+    "gemini": "gemini-2.5-flash",
+    "claude": "claude-sonnet-4-20250514",
+    "deepseek": "deepseek-chat",
+    "zai": "glm-4-flash"
+  }
+}

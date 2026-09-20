@@ -1,0 +1,143 @@
+{% extends "base.html" %}
+
+{% block title %}Generate Report - Pentest AI Platform{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>📄 Generate Report</h1>
+</div>
+
+<form method="POST" action="{{ url_for('reports.generate_report') }}" class="report-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+    <div class="form-group">
+        <label for="scan_id">Scan *</label>
+        <select id="scan_id" name="scan_id" required>
+            <option value="">— Select a scan —</option>
+            {% for scan in scans %}
+            <option value="{{ scan.id }}"
+                {% if preselected_scan_id == scan.id %}selected{% endif %}>
+                #{{ scan.id }} — {{ scan.name }} ({{ scan.status }})
+            </option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <!-- Report mode tabs -->
+    <div class="report-mode-tabs">
+        <button type="button" class="mode-tab active" data-mode="custom"
+                onclick="switchMode('custom')">🎨 Custom Report (sections)</button>
+        <button type="button" class="mode-tab" data-mode="full"
+                onclick="switchMode('full')">📊 Full Report (legacy)</button>
+    </div>
+    <input type="hidden" name="mode" id="mode-input" value="custom">
+
+    <!-- ── Custom mode ───────────────────────────────────── -->
+    <div id="custom-mode" class="mode-panel active">
+        <div class="info-box">
+            <strong>ℹ Custom Report</strong> lets you choose exactly which
+            sections to include. You can download just the subdomains, just the
+            vulnerabilities, or any combination.
+        </div>
+
+        <h3>1. Select sections to include</h3>
+        <div class="sections-grid">
+            <label class="section-checkbox">
+                <input type="checkbox" name="sections" value="subdomains">
+                <strong>🌐 Subdomains</strong><br>
+                <small>All discovered subdomains</small>
+            </label>
+            <label class="section-checkbox">
+                <input type="checkbox" name="sections" value="urls">
+                <strong>🔗 All URLs</strong><br>
+                <small>Every URL discovered</small>
+            </label>
+            <label class="section-checkbox">
+                <input type="checkbox" name="sections" value="urls_with_params">
+                <strong>🔗 URLs with Parameters</strong><br>
+                <small>Only URLs containing ?param=value</small>
+            </label>
+            <label class="section-checkbox">
+                <input type="checkbox" name="sections" value="vulnerabilities" checked>
+                <strong>🛡️ Vulnerabilities</strong><br>
+                <small>Grouped by vulnerability category</small>
+            </label>
+            <label class="section-checkbox">
+                <input type="checkbox" name="sections" value="all_findings">
+                <strong>📋 All Findings</strong><br>
+                <small>Every finding (raw list)</small>
+            </label>
+        </div>
+
+        <h3>2. Choose format</h3>
+        <div class="format-grid">
+            <label class="format-radio">
+                <input type="radio" name="format" value="txt" checked>
+                <strong>📁 TXT (ZIP archive)</strong><br>
+                <small>Each section in a separate .txt file inside a ZIP</small>
+            </label>
+            <label class="format-radio">
+                <input type="radio" name="format" value="html">
+                <strong>🌐 HTML (single file)</strong><br>
+                <small>All sections in one HTML file with download links per section</small>
+            </label>
+        </div>
+    </div>
+
+    <!-- ── Full mode (legacy) ────────────────────────────── -->
+    <div id="full-mode" class="mode-panel">
+        <div class="form-group">
+            <label for="format-full">Format</label>
+            <select id="format-full" name="format">
+                <option value="html">HTML</option>
+                <option value="pdf">PDF</option>
+                <option value="json">JSON</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="title">Report Title (optional)</label>
+            <input type="text" id="title" name="title"
+                   placeholder="Pentest Report - ...">
+        </div>
+        <div class="form-group">
+            <label class="checkbox-label">
+                <input type="checkbox" name="includes_executive_summary" checked>
+                Include Executive Summary
+            </label>
+        </div>
+        <div class="form-group">
+            <label class="checkbox-label">
+                <input type="checkbox" name="includes_remediation" checked>
+                Include Remediation Recommendations
+            </label>
+        </div>
+    </div>
+
+    <div class="form-actions">
+        <button type="submit" class="btn btn-primary">⬇ Generate &amp; Download</button>
+        <a href="{{ url_for('reports.list_reports') }}" class="btn btn-secondary">Cancel</a>
+    </div>
+</form>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function switchMode(mode) {
+    document.querySelectorAll('.mode-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.mode-panel').forEach(p => p.classList.remove('active'));
+    document.querySelector(`.mode-tab[data-mode="${mode}"]`).classList.add('active');
+    document.getElementById(mode + '-mode').classList.add('active');
+    document.getElementById('mode-input').value = mode;
+
+    // Update the format field name so the right one is sent
+    if (mode === 'full') {
+        document.getElementById('format-full').name = 'format';
+        // Disable custom-mode format radios
+        document.querySelectorAll('#custom-mode input[name="format"]').forEach(r => r.disabled = true);
+    } else {
+        document.getElementById('format-full').name = '_format_full';
+        document.querySelectorAll('#custom-mode input[name="format"]').forEach(r => r.disabled = false);
+    }
+}
+</script>
+{% endblock %}

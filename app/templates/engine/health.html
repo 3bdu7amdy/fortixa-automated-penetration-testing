@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+{% block title %}Engine Health - Pentest AI Platform{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Engine Health</h1>
+        <p class="page-subtitle">Execution engine status, tool installations, and system health.</p>
+    </div>
+    <div>
+        {% if worker_status.is_running %}
+        <form method="POST" action="{{ url_for('engine.stop') }}" style="display:inline;">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="btn btn-danger">Stop Worker</button>
+        </form>
+        {% else %}
+        <form method="POST" action="{{ url_for('engine.start') }}" style="display:inline;">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="btn btn-primary">Start Worker</button>
+        </form>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Worker Status Card -->
+<div class="card" style="margin-bottom: 1.5rem;">
+    <div class="card-header">
+        <h2 class="card-title">Worker Status</h2>
+        <span class="badge badge-{{ 'success' if worker_status.is_running else 'secondary' }}">
+            {{ 'Running' if worker_status.is_running else 'Stopped' }}
+        </span>
+    </div>
+    <div class="card-body">
+        <div class="stats-grid" style="grid-template-columns: repeat(4, 1fr);">
+            <div class="stat-card">
+                <div class="stat-value">{{ worker_status.running_count }}</div>
+                <div class="stat-label">Running Jobs</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">{{ worker_status.queued_count }}</div>
+                <div class="stat-label">Queued Jobs</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">{{ worker_status.max_concurrent_jobs }}</div>
+                <div class="stat-label">Max Concurrent</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">{{ worker_status.poll_interval }}s</div>
+                <div class="stat-label">Poll Interval</div>
+            </div>
+        </div>
+        {% if worker_status.running_jobs %}
+        <div style="margin-top: 1rem;">
+            <h3 style="font-size: 0.875rem; margin-bottom: 0.5rem; color: var(--text-muted);">Active Job IDs</h3>
+            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                {% for jid in worker_status.running_jobs %}
+                <span class="badge badge-warning">Job #{{ jid }}</span>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Database Connectivity Card -->
+<div class="card" style="margin-bottom: 1.5rem;">
+    <div class="card-header">
+        <h2 class="card-title">Database</h2>
+        <span class="badge badge-{{ 'success' if db_ok else 'danger' }}">
+            {{ 'Connected' if db_ok else 'Error' }}
+        </span>
+    </div>
+    <div class="card-body">
+        {% if db_ok %}
+        <p style="color: var(--text-muted);">Database connection is healthy.</p>
+        {% else %}
+        <p style="color: var(--severity-critical);">Database error: {{ db_error }}</p>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Tool Installation Status -->
+<div class="card">
+    <div class="card-header">
+        <h2 class="card-title">Tool Installation Status</h2>
+    </div>
+    <div class="card-body">
+        {% for category in categories %}
+        <h3 style="font-size: 1rem; margin-bottom: 0.75rem; margin-top: {{ '0' if loop.first else '1.5rem' }}; color: var(--accent-primary); text-transform: capitalize;">
+            {{ category | replace('_', ' ') }}
+        </h3>
+        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 0.5rem; margin-bottom: 0.5rem;">
+            {% for tool_name, info in tools_info.items() %}
+            {% if info.category == category %}
+            <div style="display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 0.75rem; border-radius: 4px; background: var(--bg-secondary);">
+                <span style="color: {{ '#00ff88' if tool_status.get(tool_name) else '#ff4444' }}; font-size: 1rem;">&#x25CF;</span>
+                <div>
+                    <div style="font-size: 0.875rem; font-weight: 500;">{{ tool_name }}</div>
+                    <div style="font-size: 0.75rem; color: var(--text-muted);">{{ info.description }}</div>
+                </div>
+                <span class="badge badge-{{ 'success' if tool_status.get(tool_name) else 'danger' }}" style="margin-left: auto;">
+                    {{ 'Installed' if tool_status.get(tool_name) else 'Not Found' }}
+                </span>
+            </div>
+            {% endif %}
+            {% endfor %}
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

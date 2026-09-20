@@ -1,0 +1,201 @@
+{% extends "base.html" %}
+{% block title %}Start Scan - Pentest AI Platform{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Start New Scan</h1>
+        <p class="page-subtitle">Configure and launch a security scan</p>
+    </div>
+    <a href="{{ url_for('scans.list_scans') }}" class="btn btn-secondary">Back to Scans</a>
+</div>
+
+<div class="card" style="max-width: 700px;">
+    <form method="POST" action="{{ url_for('scans.start_scan') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="target_source" id="target_source" value="project">
+
+        <div class="form-group">
+            <label class="form-label" for="scan_name">Scan Name</label>
+            <input type="text" id="scan_name" name="scan_name" class="form-input"
+                   placeholder="e.g., Full Recon - example.com" autofocus>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">Target</label>
+            <div style="display: flex; gap: 0.75rem; margin-bottom: 0.75rem;">
+                <label style="display: flex; align-items: center; gap: 0.4rem; cursor: pointer;">
+                    <input type="radio" name="target_source_radio" value="project" id="source_project" checked
+                           style="accent-color: var(--accent-cyan);">
+                    <span style="font-size: 0.9rem;">From Project</span>
+                </label>
+                <label style="display: flex; align-items: center; gap: 0.4rem; cursor: pointer;">
+                    <input type="radio" name="target_source_radio" value="manual" id="source_manual"
+                           style="accent-color: var(--accent-cyan);">
+                    <span style="font-size: 0.9rem;">Manual Input</span>
+                </label>
+            </div>
+
+            <!-- Project Target Selection -->
+            <div id="project-target-section">
+                <select id="target_id" name="target_id" class="form-select">
+                    <option value="">Select a target...</option>
+                    {% for target in targets %}
+                    <option value="{{ target.id }}">{{ target.value }} ({{ target.type }})</option>
+                    {% endfor %}
+                </select>
+                {% if not targets %}
+                <p class="form-hint" style="color: var(--text-muted);">No targets available. Add targets in a project or use manual input.</p>
+                {% endif %}
+            </div>
+
+            <!-- Manual Target Input -->
+            <div id="manual-target-section" style="display: none;">
+                <div style="display: flex; gap: 0.75rem; align-items: flex-end;">
+                    <div class="form-group" style="flex: 1; margin-bottom: 0;">
+                        <input type="text" id="manual_target" name="manual_target" class="form-input"
+                               placeholder="e.g., example.com or https://target.com/page?id=1">
+                    </div>
+                    <div class="form-group" style="margin-bottom: 0; min-width: 140px;">
+                        <select id="manual_target_type" name="manual_target_type" class="form-select">
+                            <option value="domain" selected>Domain</option>
+                            <option value="ip">IP Address</option>
+                            <option value="url">URL</option>
+                            <option value="cidr">CIDR</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label" for="config_id">Scan Configuration</label>
+            <select id="config_id" name="config_id" class="form-select" required>
+                <option value="">Select a configuration...</option>
+                {% for config in configs %}
+                <option value="{{ config.id }}">{{ config.name }} {% if config.is_default %}(Default){% endif %} - {{ config.config_type }}</option>
+                {% endfor %}
+            </select>
+            {% if tool_status %}
+            <div id="tool-availability" style="margin-top: 1rem; padding: 0.75rem; background: rgba(0,0,0,0.3); border-radius: 0.5rem; border: 1px solid var(--border-color);">
+                <h4 style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.5rem;">🔧 Tool Availability</h4>
+                <div style="display: flex; flex-wrap: wrap; gap: 0.4rem;">
+                {% for key, info in tool_status.items() %}
+                    <span style="font-size: 0.75rem; padding: 0.2rem 0.5rem; border-radius: 0.3rem; 
+                        {% if info.installed %}background: rgba(34,197,94,0.15); color: #22c55e; border: 1px solid rgba(34,197,94,0.3);{% else %}background: rgba(239,68,68,0.15); color: #ef4444; border: 1px solid rgba(239,68,68,0.3);{% endif %}"
+                        title="{{ info.description }} (binary: {{ info.binary }})">
+                        {{ info.binary }} {% if info.installed %}✓{% else %}✗{% endif %}
+                    </span>
+                {% endfor %}
+                </div>
+                <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.5rem;">
+                    ✓ = installed &nbsp;&nbsp; ✗ = not installed (scans with unavailable tools will be skipped)
+                </p>
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="form-group" style="padding: 0.75rem; background: rgba(255, 193, 7, 0.08); border: 1px solid var(--accent-orange); border-radius: var(--radius-md);">
+            <label for="auth_cookie" style="display: block; margin-bottom: 0.4rem; color: var(--accent-orange); font-weight: 600;">
+                🍪 Auth Cookie (optional - for targets that need login like DVWA)
+            </label>
+            <input type="text" id="auth_cookie" name="auth_cookie" class="form-input"
+                   placeholder="e.g., PHPSESSID=abc123; security=low"
+                   style="width: 100%; background: var(--bg-secondary); color: var(--text-primary); border: 1px solid var(--border-color); padding: 8px 12px; border-radius: var(--radius-sm); font-family: monospace; font-size: 13px;">
+            <p style="font-size: 0.75rem; color: var(--text-muted); margin: 0.4rem 0 0 0;">
+                Get this from your browser's DevTools → Application → Cookies after logging in.
+                The cookie will be passed to sqlmap, dalfox, nuclei, and other HTTP tools.
+            </p>
+        </div>
+
+        <div class="form-group" style="padding: 0.75rem; background: rgba(0, 212, 255, 0.08); border: 1px solid var(--accent-cyan); border-radius: var(--radius-md);">
+            <label style="display: flex; align-items: flex-start; gap: 0.5rem; cursor: pointer; margin: 0;">
+                <input type="checkbox" name="use_pipeline" id="use_pipeline"
+                       style="accent-color: var(--accent-cyan); margin-top: 0.2rem;">
+                <div>
+                    <strong style="color: var(--accent-cyan);">🔄 Use Pipeline Mode (recommended)</strong>
+                    <p style="font-size: 0.8rem; color: var(--text-secondary); margin: 0.3rem 0 0 0;">
+                        Runs tools in the correct order: Phase 1 (subdomain discovery) →
+                        Phase 2 (HTTP probing) → Phase 3 (URL gathering + host checks) →
+                        Phase 4 (injection scans). Auto-enabled for domain targets with
+                        multi-phase configurations (e.g. "Full Pentest", "Full Recon").
+                    </p>
+                </div>
+            </label>
+        </div>
+
+        <div style="display: flex; gap: 0.75rem;">
+            <button type="submit" class="btn btn-primary">Start Scan</button>
+            <a href="{{ url_for('scans.list_scans') }}" class="btn btn-secondary">Cancel</a>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.querySelectorAll('input[name="target_source_radio"]').forEach(radio => {
+    radio.addEventListener('change', function() {
+        var isProject = this.value === 'project';
+        document.getElementById('project-target-section').style.display = isProject ? 'block' : 'none';
+        document.getElementById('manual-target-section').style.display = isProject ? 'none' : 'block';
+        // Update hidden field
+        document.getElementById('target_source').value = this.value;
+        // Clear the other input
+        if (isProject) {
+            document.getElementById('manual_target').value = '';
+        } else {
+            document.getElementById('target_id').selectedIndex = 0;
+        }
+    });
+});
+
+// ── Auto-detect target type when user types ──────────────────
+// If the user types "example.com" → auto-select "Domain"
+// If the user types "https://..." → auto-select "URL"
+// If the user types "192.168.1.1" → auto-select "IP"
+document.getElementById('manual_target').addEventListener('input', function() {
+    var val = this.value.trim();
+    var select = document.getElementById('manual_target_type');
+    if (!val) return;
+
+    if (val.startsWith('http://') || val.startsWith('https://')) {
+        select.value = 'url';
+    } else if (/^(\d{1,3}\.){3}\d{1,3}$/.test(val)) {
+        select.value = 'ip';
+    } else if (/^([a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$/.test(val)) {
+        select.value = 'domain';
+    }
+    // CIDR detection: contains /
+    if (val.includes('/') && val.match(/^(\d{1,3}\.){3}\d{1,3}\/\d{1,2}$/)) {
+        select.value = 'cidr';
+    }
+});
+
+// Form validation before submit
+document.querySelector('form').addEventListener('submit', function(e) {
+    var source = document.getElementById('target_source').value;
+    if (source === 'project') {
+        var targetId = document.getElementById('target_id').value;
+        if (!targetId) {
+            e.preventDefault();
+            alert('Please select a target from the project.');
+            return false;
+        }
+    } else {
+        var manualTarget = document.getElementById('manual_target').value.trim();
+        if (!manualTarget) {
+            e.preventDefault();
+            alert('Please enter a target URL, domain, or IP address.');
+            return false;
+        }
+    }
+    var configId = document.getElementById('config_id').value;
+    if (!configId) {
+        e.preventDefault();
+        alert('Please select a scan configuration.');
+        return false;
+    }
+});
+</script>
+{% endblock %}

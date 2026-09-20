@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}Projects - Pentest AI Platform{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Projects</h1>
+        <p class="page-subtitle">Manage your security engagement projects</p>
+    </div>
+    <a href="{{ url_for('projects.create_project') }}" class="btn btn-primary">New Project</a>
+</div>
+
+{% if projects %}
+<div class="grid grid-3">
+    {% for project in projects %}
+    <div class="card">
+        <div class="card-header">
+            <a href="{{ url_for('projects.view_project', project_id=project.id) }}" class="card-title">{{ project.name }}</a>
+            <span class="badge badge-{{ 'success' if project.status == 'active' else 'secondary' }}">{{ project.status }}</span>
+        </div>
+        <div class="card-body">
+            <p style="margin-bottom: 0.75rem; font-size: 0.875rem;">
+                {{ project.description[:100] + '...' if project.description and project.description|length > 100 else (project.description or 'No description') }}
+            </p>
+            <div style="display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--text-muted);">
+                <span>{{ project.targets.count() }} targets</span>
+                <span>{{ project.get_findings_count() }} findings</span>
+                <span>{{ project.created_at.strftime('%b %d, %Y') }}</span>
+            </div>
+            <div style="display: flex; gap: 0.5rem; margin-top: 0.75rem;">
+                <a href="{{ url_for('projects.view_project', project_id=project.id) }}" class="btn btn-outline btn-sm" style="flex: 1; text-align: center;">View</a>
+                <form method="POST" action="{{ url_for('projects.delete_project', project_id=project.id) }}" style="display: inline;" onsubmit="return confirm('Delete this project and all its data?');">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn btn-danger btn-sm" style="width: 100%;">Delete</button>
+                </form>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="empty-state">
+    <div class="empty-state-icon">&#x1F4C1;</div>
+    <h3 class="empty-state-title">No Projects Yet</h3>
+    <p class="empty-state-text">Create your first project to start organizing your security engagements.</p>
+    <a href="{{ url_for('projects.create_project') }}" class="btn btn-primary">Create Project</a>
+</div>
+{% endif %}
+{% endblock %}

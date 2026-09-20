@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+{% block title %}Create Configuration - Pentest AI Platform{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Create Configuration</h1>
+        <p class="page-subtitle">Define tools and parameters for your scan</p>
+    </div>
+    <a href="{{ url_for('configs.list_configs') }}" class="btn btn-secondary">Back to Configurations</a>
+</div>
+
+<div class="card">
+    <form method="POST" action="{{ url_for('configs.create_config') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+        <!-- Basic info -->
+        <div style="display: flex; gap: 1rem; margin-bottom: 1.5rem; flex-wrap: wrap;">
+            <div class="form-group" style="flex: 2; min-width: 250px;">
+                <label class="form-label" for="name">Configuration Name</label>
+                <input type="text" id="name" name="name" class="form-input"
+                       placeholder="e.g., Custom Recon Config" required minlength="3" autofocus>
+            </div>
+            <div class="form-group" style="flex: 1; min-width: 180px;">
+                <label class="form-label" for="config_type">Configuration Type</label>
+                <select id="config_type" name="config_type" class="form-select">
+                    <option value="recon">Recon</option>
+                    <option value="vuln_scan">Vulnerability Scan</option>
+                    <option value="full">Full Pentest</option>
+                    <option value="custom" selected>Custom</option>
+                </select>
+            </div>
+        </div>
+
+        <hr style="border-color: var(--border-color); margin: 1.5rem 0;">
+
+        <!-- Tool selection by category -->
+        {% for category in categories %}
+        <div style="margin-bottom: 2rem;">
+            <h3 style="color: var(--accent-cyan); font-size: 1rem; margin-bottom: 1rem; text-transform: uppercase; letter-spacing: 0.5px;">
+                {{ category.replace('_', ' ').title() }} Tools
+            </h3>
+            <div class="grid grid-2">
+                {% for tool_name, tool_info in tools.items() %}
+                {% if tool_info.category == category %}
+                <div class="card tool-card" style="padding: 1rem; background: var(--bg-secondary);" data-tool-name="{{ tool_name }}">
+                    <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.75rem;">
+                        <!-- Enable checkbox -->
+                        <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                            <input type="checkbox" name="tool_{{ tool_name }}_enabled" value="on"
+                                   id="tool_{{ tool_name }}_enabled"
+                                   class="tool-enable-checkbox"
+                                   style="accent-color: var(--accent-cyan); width: 16px; height: 16px;">
+                            <span style="font-family: var(--font-mono); font-size: 0.9rem; color: var(--accent-cyan);">{{ tool_name.replace('_', ' ').title() }}</span>
+                        </label>
+                        <!-- Installed indicator -->
+                        <span id="status_{{ tool_name }}" class="badge badge-secondary" style="font-size: 0.65rem;">checking...</span>
+                    </div>
+                    <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.5rem;">{{ tool_info.description }}</p>
+                    {% if tool_info.get('tool') %}
+                    <p style="font-size: 0.7rem; color: var(--text-muted); margin-bottom: 0.25rem;">Tool: <code style="color: var(--accent-cyan);">{{ tool_info.tool }}</code></p>
+                    {% endif %}
+                    {% if tool_info.get('input_type') %}
+                    <p style="font-size: 0.7rem; color: var(--text-muted); margin-bottom: 0.5rem;">Input: <span style="color: var(--accent-orange);">{{ tool_info.input_type }}</span></p>
+                    {% endif %}
+                    <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+                        <div class="form-group" style="flex: 2; min-width: 150px; margin-bottom: 0;">
+                            <label class="form-label" style="font-size: 0.75rem;">Flags</label>
+                            <input type="text" name="tool_{{ tool_name }}_flags"
+                                   id="tool_{{ tool_name }}_flags"
+                                   class="form-input" placeholder="-flag1 -flag2"
+                                   style="font-family: var(--font-mono); font-size: 0.8rem;">
+                        </div>
+                        <div class="form-group" style="flex: 1; min-width: 100px; margin-bottom: 0;">
+                            <label class="form-label" style="font-size: 0.75rem;">Timeout (s)</label>
+                            <input type="number" name="tool_{{ tool_name }}_timeout"
+                                   id="tool_{{ tool_name }}_timeout"
+                                   class="form-input" value="300" min="30" max="7200"
+                                   style="font-family: var(--font-mono); font-size: 0.8rem;">
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+                {% endfor %}
+            </div>
+        </div>
+        {% endfor %}
+
+        <div style="display: flex; gap: 0.75rem; margin-top: 1rem;">
+            <button type="submit" class="btn btn-primary">Create Configuration</button>
+            <a href="{{ url_for('configs.list_configs') }}" class="btn btn-secondary">Cancel</a>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Fetch tool status and update badges + auto-disable not-installed tools
+fetch("{{ url_for('configs.tools_status') }}")
+    .then(r => r.json())
+    .then(data => {
+        Object.entries(data).forEach(([tool, info]) => {
+            const badge = document.getElementById('status_' + tool);
+            const checkbox = document.getElementById('tool_' + tool + '_enabled');
+            const card = document.querySelector(`.tool-card[data-tool-name="${tool}"]`);
+            if (badge) {
+                if (info.installed) {
+                    badge.textContent = 'Installed';
+                    badge.className = 'badge badge-success';
+                } else {
+                    badge.textContent = 'Not Installed';
+                    badge.className = 'badge badge-danger';
+                    // Auto-disable and uncheck not-installed tools
+                    if (checkbox) {
+                        checkbox.checked = false;
+                        checkbox.disabled = true;
+                        checkbox.style.opacity = '0.4';
+                    }
+                    if (card) {
+                        card.style.opacity = '0.5';
+                    }
+                }
+            }
+        });
+    })
+    .catch(() => {
+        document.querySelectorAll('[id^="status_"]').forEach(el => {
+            el.textContent = 'unknown';
+            el.className = 'badge badge-secondary';
+        });
+    });
+</script>
+{% endblock %}

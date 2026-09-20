@@ -1,0 +1,416 @@
+{% extends "base.html" %}
+{% block title %}{{ scan.name }} - Pentest AI Platform{% endblock %}
+
+{% block content %}
+<div class="page-header" data-scan-id="{{ scan.id }}">
+    <div>
+        <h1 class="page-title">
+            {% if scan.status in ['running', 'pending'] %}
+            <span class="running-indicator">
+                <span class="running-dot"></span>
+            </span>
+            {% endif %}
+            {{ scan.name }}
+        </h1>
+        <div class="scan-meta">
+            <span class="badge badge-{{ scan.status }}">{{ scan.status|upper }}</span>
+            <span class="meta-item">Target: <strong>{{ scan.target_value }}</strong></span>
+            <span class="meta-item">Type: {{ scan.scan_type }}</span>
+            {% if scan.pipeline_mode %}
+            <span class="badge badge-pipeline">PIPELINE</span>
+            {% endif %}
+        </div>
+    </div>
+    <div class="scan-actions">
+        {% if scan.status in ['running', 'pending'] %}
+        <form method="POST" action="{{ url_for('scans.cancel_scan', scan_id=scan.id) }}"
+              onsubmit="return confirm('Cancel this scan?');">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="btn btn-danger">Cancel Scan</button>
+        </form>
+        {% endif %}
+        <a href="{{ url_for('reports.generate_report', scan_id=scan.id) }}"
+           class="btn btn-primary">Generate Report</a>
+        {% if scan.status == 'completed' %}
+        <a href="{{ url_for('ai.analyze_scan', scan_id=scan.id) }}"
+           class="btn btn-secondary"
+           onclick="return confirm('Run AI analysis?');">
+            Analyze with AI
+        </a>
+        {% endif %}
+    </div>
+</div>
+
+{% if scan.pipeline_mode and pipeline_phase_label %}
+<div class="pipeline-banner">
+    <span class="pipeline-label">🔄 {{ pipeline_phase_label }}</span>
+    <span class="muted">Phase {{ scan.current_phase }} of 4</span>
+</div>
+{% endif %}
+
+<!-- Progress bar -->
+<div class="progress-container scan-detail-progress"
+     data-scan-total="{{ scan.total_jobs }}"
+     data-scan-completed="{{ scan.completed_jobs }}"
+     data-scan-failed="{{ scan.failed_jobs }}">
+    <div class="progress-info">
+        <span>Progress: {{ scan.progress_percentage }}%</span>
+        <span class="muted">
+            {{ scan.completed_jobs + scan.failed_jobs }} / {{ scan.total_jobs }} jobs
+            ({{ scan.completed_jobs }} completed, {{ scan.failed_jobs }} failed)
+        </span>
+    </div>
+    <div class="progress-bar">
+        <div class="progress-fill" style="width: {{ scan.progress_percentage }}%;"></div>
+    </div>
+</div>
+
+<!-- Tabbed Interface -->
+<div class="tabs-container">
+    <div class="tabs-nav">
+        <button class="tab-btn active" data-tab="overview">📊 Overview</button>
+        <button class="tab-btn" data-tab="subdomains">🌐 Subdomains
+            <span class="tab-count" id="subdomains-count">{{ overview.subdomains_count }}</span>
+        </button>
+        <button class="tab-btn" data-tab="urls">🔗 URLs
+            <span class="tab-count" id="urls-count">{{ overview.urls_count }}</span>
+        </button>
+        <button class="tab-btn" data-tab="vulnerabilities">🛡️ Vulnerabilities
+            <span class="tab-count" id="vuln-count">{{ overview.vulnerabilities_count }}</span>
+        </button>
+    </div>
+
+    <div class="tabs-content">
+        <!-- ===== Tab 1: Overview ===== -->
+        <div class="tab-panel active" id="tab-overview">
+            <div class="stats-grid">
+                <div class="stat-card stat-blue">
+                    <div class="stat-label">Subdomains</div>
+                    <div class="stat-value" id="stat-subdomains">{{ overview.subdomains_count }}</div>
+                </div>
+                <div class="stat-card stat-purple">
+                    <div class="stat-label">URLs</div>
+                    <div class="stat-value" id="stat-urls">{{ overview.urls_count }}</div>
+                </div>
+                <div class="stat-card stat-red">
+                    <div class="stat-label">Vulnerabilities</div>
+                    <div class="stat-value" id="stat-vulns">{{ overview.vulnerabilities_count }}</div>
+                </div>
+                <div class="stat-card stat-green">
+                    <div class="stat-label">Total Findings</div>
+                    <div class="stat-value" id="stat-total">{{ overview.total_findings }}</div>
+                </div>
+            </div>
+
+            <h3>Severity Breakdown</h3>
+            <div class="severity-bars">
+                {% for sev in ['critical', 'high', 'medium', 'low', 'info'] %}
+                <div class="severity-row">
+                    <span class="severity-label severity-{{ sev }}">{{ sev|upper }}</span>
+                    <div class="severity-bar-bg">
+                        <div class="severity-bar-fill severity-{{ sev }}"
+                             style="width: {% if overview.total_findings > 0 %}{{ (overview.severity_counts[sev] / overview.total_findings * 100)|round }}%{% else %}0%{% endif %};"></div>
+                    </div>
+                    <span class="severity-count">{{ overview.severity_counts[sev] }}</span>
+                </div>
+                {% endfor %}
+            </div>
+
+            <h3>Jobs</h3>
+            <div class="jobs-table-wrap">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Tool</th>
+                            <th>Status</th>
+                            <th>Started</th>
+                            <th>Completed</th>
+                            <th>Duration</th>
+                            <th>Error / Logs</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for job in jobs %}
+                        <tr>
+                            <td>{{ job.tool_name }}</td>
+                            <td>
+                                <span class="badge badge-{{ job.status }}">{{ job.status }}</span>
+                            </td>
+                            <td>{{ job.started_at.strftime('%H:%M:%S') if job.started_at else '—' }}</td>
+                            <td>{{ job.completed_at.strftime('%H:%M:%S') if job.completed_at else '—' }}</td>
+                            <td>
+                                {% if job.duration_seconds %}
+                                {{ '%.1f'|format(job.duration_seconds) }}s
+                                {% else %}—{% endif %}
+                            </td>
+                            <td>
+                                {% if job.status == 'failed' and job.error_message %}
+                                    <div style="color: var(--accent-red); font-size: 0.75rem; max-width: 300px; word-break: break-word;" title="{{ job.error_message }}">
+                                        {{ job.error_message[:120] }}{% if job.error_message|length > 120 %}...{% endif %}
+                                    </div>
+                                    {% if job.stdout_path %}
+                                    <a href="#" onclick="fetch('/scans/{{ scan.id }}/job/{{ job.id }}/logs').then(r=>r.text()).then(t=>{alert(t)})" style="color: var(--accent-cyan); font-size: 0.7rem; text-decoration: underline;">
+                                        📋 View raw output
+                                    </a>
+                                    {% endif %}
+                                {% elif job_logs and job.id in job_logs %}
+                                    <details>
+                                        <summary style="cursor: pointer; color: var(--accent-cyan); font-size: 0.75rem;">
+                                            {{ job_logs[job.id]|length }} log entries
+                                        </summary>
+                                        <div style="background: var(--bg-tertiary); padding: 8px; margin-top: 4px; border-radius: 4px; font-family: monospace; font-size: 0.7rem; max-height: 200px; overflow-y: auto;">
+                                            {% for log in job_logs[job.id] %}
+                                            <div style="margin-bottom: 4px; color: {% if log.level == 'ERROR' %}var(--accent-red){% elif log.level == 'WARNING' %}var(--accent-orange){% elif log.level == 'INFO' %}var(--text-secondary){% else %}var(--text-muted){% endif %};">
+                                                [{{ log.level }}] {{ log.message }}
+                                            </div>
+                                            {% endfor %}
+                                        </div>
+                                    </details>
+                                {% else %}
+                                    —
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                        {% if not jobs %}
+                        <tr><td colspan="6" class="empty">No jobs yet.</td></tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- ===== Tab 2: Subdomains ===== -->
+        <div class="tab-panel" id="tab-subdomains">
+            <div class="tab-toolbar">
+                <input type="text" id="subdomain-filter" placeholder="🔍 Filter subdomains..."
+                       class="filter-input" oninput="filterTable('subdomain-filter', 'subdomains-table')">
+                <button class="btn btn-secondary btn-sm" onclick="downloadSection('subdomains')">⬇ Download .txt</button>
+            </div>
+            <div class="table-wrap">
+                <table class="table" id="subdomains-table">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Subdomain</th>
+                            <th>Title</th>
+                            <th>Status</th>
+                            <th>Source</th>
+                        </tr>
+                    </thead>
+                    <tbody id="subdomains-tbody">
+                        <tr><td colspan="5" class="loading">Loading...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- ===== Tab 3: URLs ===== -->
+        <div class="tab-panel" id="tab-urls">
+            <div class="tab-toolbar">
+                <input type="text" id="url-filter" placeholder="🔍 Filter URLs..."
+                       class="filter-input" oninput="filterTable('url-filter', 'urls-table')">
+                <label class="checkbox-label">
+                    <input type="checkbox" id="only-params" onchange="filterUrlsByParams()">
+                    Only URLs with parameters
+                </label>
+                <button class="btn btn-secondary btn-sm" onclick="downloadSection('urls')">⬇ Download .txt</button>
+            </div>
+            <div class="table-wrap">
+                <table class="table" id="urls-table">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>URL</th>
+                            <th>Has Parameters</th>
+                            <th>Source</th>
+                        </tr>
+                    </thead>
+                    <tbody id="urls-tbody">
+                        <tr><td colspan="4" class="loading">Loading...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- ===== Tab 4: Vulnerabilities ===== -->
+        <div class="tab-panel" id="tab-vulnerabilities">
+            <div class="tab-toolbar">
+                <span class="muted" id="vuln-summary"></span>
+                <button class="btn btn-secondary btn-sm" onclick="downloadSection('vulnerabilities')">⬇ Download .txt</button>
+            </div>
+            <div id="vuln-categories-container">
+                <p class="loading">Loading...</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const SCAN_ID = {{ scan.id }};
+
+// ── Tab switching ──────────────────────────────────────────
+document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+        btn.classList.add('active');
+        document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+
+        // Lazy-load tab content
+        const tab = btn.dataset.tab;
+        if (tab === 'subdomains') loadSubdomains();
+        else if (tab === 'urls') loadUrls();
+        else if (tab === 'vulnerabilities') loadVulnerabilities();
+    });
+});
+
+// ── Loaders ────────────────────────────────────────────────
+async function loadSubdomains() {
+    try {
+        const resp = await fetch(`/scans/${SCAN_ID}/tab/subdomains`);
+        const data = await resp.json();
+        const tbody = document.getElementById('subdomains-tbody');
+        if (!data.subdomains || data.subdomains.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" class="empty">No subdomains discovered.</td></tr>';
+            return;
+        }
+        tbody.innerHTML = data.subdomains.map((s, i) => `
+            <tr>
+                <td>${i + 1}</td>
+                <td><a href="https://${s.subdomain}" target="_blank" rel="noopener">${s.subdomain}</a></td>
+                <td>${s.title || '—'}</td>
+                <td>${s.status_code ? `<span class="badge badge-status-${Math.floor(s.status_code/100)}">${s.status_code}</span>` : '—'}</td>
+                <td>${s.source || '—'}</td>
+            </tr>
+        `).join('');
+    } catch (e) {
+        document.getElementById('subdomains-tbody').innerHTML =
+            `<tr><td colspan="5" class="error">Failed to load: ${e}</td></tr>`;
+    }
+}
+
+async function loadUrls() {
+    try {
+        const resp = await fetch(`/scans/${SCAN_ID}/tab/urls`);
+        const data = await resp.json();
+        window._urlsData = data.urls;
+        renderUrls(data.urls);
+    } catch (e) {
+        document.getElementById('urls-tbody').innerHTML =
+            `<tr><td colspan="4" class="error">Failed to load: ${e}</td></tr>`;
+    }
+}
+
+function renderUrls(urls) {
+    const tbody = document.getElementById('urls-tbody');
+    if (!urls || urls.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" class="empty">No URLs discovered.</td></tr>';
+        return;
+    }
+    tbody.innerHTML = urls.map((u, i) => `
+        <tr ${u.has_parameters ? 'class="has-params"' : ''}>
+            <td>${i + 1}</td>
+            <td class="url-cell"><a href="${u.url}" target="_blank" rel="noopener">${u.url}</a></td>
+            <td>${u.has_parameters ? '✅ Yes' : '❌ No'}</td>
+            <td>${u.source || '—'}</td>
+        </tr>
+    `).join('');
+}
+
+function filterUrlsByParams() {
+    const only = document.getElementById('only-params').checked;
+    if (!window._urlsData) return;
+    const filtered = only ? window._urlsData.filter(u => u.has_parameters) : window._urlsData;
+    renderUrls(filtered);
+}
+
+async function loadVulnerabilities() {
+    try {
+        const resp = await fetch(`/scans/${SCAN_ID}/tab/vulnerabilities`);
+        const data = await resp.json();
+        const container = document.getElementById('vuln-categories-container');
+        document.getElementById('vuln-summary').textContent =
+            `${data.total_categories} categories • ${Object.values(data.summary).reduce((a,b)=>a+b,0)} findings`;
+
+        if (!data.grouped || Object.keys(data.grouped).length === 0) {
+            container.innerHTML = '<p class="empty">No vulnerabilities discovered.</p>';
+            return;
+        }
+
+        const html = Object.entries(data.grouped).map(([cat, items]) => {
+            const sevCounts = {};
+            items.forEach(i => { sevCounts[i.severity] = (sevCounts[i.severity]||0)+1; });
+            const sevBadges = Object.entries(sevCounts)
+                .map(([s,c]) => `<span class="badge badge-${s}">${s}: ${c}</span>`).join(' ');
+
+            const rows = items.map(i => `
+                <tr>
+                    <td>${i.title || '—'}</td>
+                    <td><span class="badge badge-${i.severity}">${i.severity}</span></td>
+                    <td>${i.tool_name}</td>
+                    <td class="url-cell">${i.url ? `<a href="${i.url}" target="_blank" rel="noopener">${i.url}</a>` : '—'}</td>
+                    <td>${i.cvss_score || '—'}</td>
+                </tr>
+            `).join('');
+
+            return `
+                <div class="vuln-category">
+                    <div class="vuln-category-header" onclick="this.parentElement.classList.toggle('expanded')">
+                        <span class="vuln-cat-name">${cat}</span>
+                        <span class="vuln-cat-count">${items.length} finding(s)</span>
+                        <span class="vuln-cat-sev">${sevBadges}</span>
+                        <span class="vuln-cat-toggle">▼</span>
+                    </div>
+                    <div class="vuln-category-body">
+                        <table class="table">
+                            <thead><tr>
+                                <th>Title</th><th>Severity</th><th>Tool</th><th>URL</th><th>CVSS</th>
+                            </tr></thead>
+                            <tbody>${rows}</tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+        }).join('');
+        container.innerHTML = html;
+    } catch (e) {
+        document.getElementById('vuln-categories-container').innerHTML =
+            `<p class="error">Failed to load: ${e}</p>`;
+    }
+}
+
+// ── Filter helper ──────────────────────────────────────────
+function filterTable(inputId, tableId) {
+    const q = document.getElementById(inputId).value.toLowerCase();
+    const tbody = document.querySelector(`#${tableId} tbody`);
+    tbody.querySelectorAll('tr').forEach(row => {
+        const text = row.textContent.toLowerCase();
+        row.style.display = text.includes(q) ? '' : 'none';
+    });
+}
+
+// ── Download section ───────────────────────────────────────
+function downloadSection(section) {
+    window.location.href = `/reports/section/${SCAN_ID}/${section}`;
+}
+
+// ── Auto-refresh scan status while running ─────────────────
+{% if scan.status in ['running', 'pending'] %}
+let refreshInterval = setInterval(async () => {
+    try {
+        const resp = await fetch(`/scans/${SCAN_ID}/status`);
+        const data = await resp.json();
+        if (data.status !== 'running' && data.status !== 'pending') {
+            clearInterval(refreshInterval);  // Stop refreshing
+            window.location.reload();        // Reload once
+        }
+    } catch (e) {
+        clearInterval(refreshInterval);  // Stop on error
+    }
+}, 5000);
+{% endif %}
+</script>
+{% endblock %}

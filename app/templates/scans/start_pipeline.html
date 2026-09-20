@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+
+{% block title %}Start Pipeline Scan{% endblock %}
+
+{% block content %}
+<div class="pipeline-start">
+  <h1>🚀 Start Pipeline Scan</h1>
+  <p class="muted">
+    Runs a full 4-phase pentest workflow automatically:
+  </p>
+
+  <div class="pipeline-phases">
+    <div class="phase-card">
+      <div class="phase-num">1</div>
+      <div class="phase-info">
+        <strong>Subdomain Discovery</strong><br>
+        <small>assetfinder + subfinder + amass → subdomains.txt</small>
+      </div>
+    </div>
+    <div class="phase-arrow">↓</div>
+    <div class="phase-card">
+      <div class="phase-num">2</div>
+      <div class="phase-info">
+        <strong>HTTP Probing</strong><br>
+        <small>httpx → live_hosts.txt</small>
+      </div>
+    </div>
+    <div class="phase-arrow">↓</div>
+    <div class="phase-card">
+      <div class="phase-num">3</div>
+      <div class="phase-info">
+        <strong>URL Gathering + Host Checks</strong><br>
+        <small>waybackurls + gau + katana + 30+ host checks (parallel)</small>
+      </div>
+    </div>
+    <div class="phase-arrow">↓</div>
+    <div class="phase-card">
+      <div class="phase-num">4</div>
+      <div class="phase-info">
+        <strong>Injection Scans</strong><br>
+        <small>xss + sqli + ssti + cmd + ... on parameterized URLs</small>
+      </div>
+    </div>
+  </div>
+
+  <form method="POST" action="{{ url_for('scans.start_pipeline_scan') }}" class="pipeline-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+    <div class="form-group">
+      <label for="target_value">Target Domain *</label>
+      <input type="text" id="target_value" name="target_value"
+             placeholder="example.com" required
+             pattern="^([a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$"
+             title="Enter a valid root domain (e.g. example.com)">
+      <small>Enter the root domain only (no http://, no subdomains).</small>
+    </div>
+
+    <div class="form-group">
+      <label for="scan_name">Scan Name (optional)</label>
+      <input type="text" id="scan_name" name="scan_name"
+             placeholder="Pipeline - example.com">
+      <small>If left blank, a name will be generated automatically.</small>
+    </div>
+
+    <div class="form-group">
+      <label for="target_type">Target Type</label>
+      <select id="target_type" name="target_type">
+        <option value="domain" selected>Domain</option>
+        <option value="ip">IP Address</option>
+        <option value="url">URL</option>
+      </select>
+    </div>
+
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary">🚀 Start Pipeline</button>
+      <a href="{{ url_for('scans.list_scans') }}" class="btn btn-secondary">Cancel</a>
+    </div>
+  </form>
+
+  <div class="warning-note">
+    <strong>⚠ Note:</strong>
+    The pipeline uses many external security tools. Make sure they are installed
+    on the server. Tools that are not installed will be skipped automatically,
+    and the pipeline will continue with the available ones.
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,745 @@
+{% extends "base.html" %}
+
+{% block title %}AI Assistant - Pentest AI Platform{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">🤖 AI Assistant</h1>
+        <p class="page-subtitle">AI-powered vulnerability analysis using multi-agent system</p>
+    </div>
+</div>
+
+<!-- Status Banner -->
+<div id="status-banner" style="display: none; padding: 12px 16px; border-radius: var(--radius-md); margin-bottom: 20px; font-size: 14px;">
+</div>
+
+<!-- Settings Bar -->
+<div class="card" style="padding: 16px; margin-bottom: 20px;">
+    <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 12px;">
+        <strong style="color: var(--accent-cyan); font-size: 14px;">⚙️ AI Provider Settings</strong>
+    </div>
+
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+        <!-- Left: Provider Selection -->
+        <div>
+            <label style="display: block; margin-bottom: 6px; font-size: 13px; color: var(--text-primary);">Select AI Provider</label>
+            <select id="provider-select" onchange="onProviderChange()"
+                    style="width: 100%; background: var(--bg-secondary); color: var(--text-primary); border: 1px solid var(--border-color); padding: 8px 12px; border-radius: var(--radius-sm); font-size: 13px;">
+                {% for p in providers %}
+                <option value="{{ p.id }}" {% if p.id == selected_provider %}selected{% endif %}>
+                    {{ p.name }} {% if not p.key_set %}(no key){% endif %}
+                </option>
+                {% endfor %}
+            </select>
+
+            <label style="display: block; margin-top: 10px; margin-bottom: 6px; font-size: 13px; color: var(--text-primary);">Model</label>
+            <select id="model-select" onchange="onModelChange()"
+                    style="width: 100%; background: var(--bg-secondary); color: var(--text-primary); border: 1px solid var(--border-color); padding: 8px 12px; border-radius: var(--radius-sm); font-size: 13px;">
+            </select>
+
+            <div id="key-status-text" style="margin-top: 10px; font-size: 12px; color: var(--text-muted);"></div>
+        </div>
+
+        <!-- Right: API Key Input -->
+        <div>
+            <label style="display: block; margin-bottom: 6px; font-size: 13px; color: var(--text-primary);">API Key</label>
+            <div style="display: flex; gap: 8px;">
+                <input type="password" id="api-key-input" placeholder="Paste API key here..."
+                       style="flex: 1; background: var(--bg-secondary); color: var(--text-primary); border: 1px solid var(--border-color); padding: 8px 12px; border-radius: var(--radius-sm); font-size: 13px;">
+                <button id="save-key-btn" class="btn btn-primary" style="padding: 8px 14px; font-size: 13px; white-space: nowrap;">
+                    💾 Save
+                </button>
+            </div>
+            <a id="get-key-link" href="#" target="_blank" style="font-size: 11px; color: var(--accent-cyan); margin-top: 6px; display: inline-block;">
+                Get API Key →
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Main Layout: 2 columns -->
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
+
+    <!-- Left Column: Input Form -->
+    <div class="card" style="padding: 20px;">
+        <h3 style="margin-bottom: 16px; color: var(--accent-cyan);">🎯 Scan Configuration</h3>
+
+        <div class="form-group" style="margin-bottom: 16px;">
+            <label style="display: block; margin-bottom: 6px; font-size: 14px; color: var(--text-primary);">Target URL *</label>
+            <input type="text" id="target_url" placeholder="http://example.com/page?id=1"
+                   style="width: 100%; background: var(--bg-secondary); color: var(--text-primary); border: 1px solid var(--border-color); padding: 10px 14px; border-radius: var(--radius-sm); font-size: 14px;">
+        </div>
+
+        <div class="form-group" style="margin-bottom: 16px;">
+            <label style="display: block; margin-bottom: 6px; font-size: 14px; color: var(--text-primary);">Cookie / Bearer Token (optional)</label>
+            <input type="text" id="auth_cookie" placeholder="PHPSESSID=abc123; security=low"
+                   style="width: 100%; background: var(--bg-secondary); color: var(--text-primary); border: 1px solid var(--border-color); padding: 10px 14px; border-radius: var(--radius-sm); font-family: monospace; font-size: 13px;">
+        </div>
+
+        <div class="form-group" style="margin-bottom: 16px;">
+            <label style="display: block; margin-bottom: 6px; font-size: 14px; color: var(--text-primary);">Custom Prompt (optional)</label>
+            <textarea id="custom_prompt" rows="3" placeholder="Enter custom instructions for the AI agent..."
+                      style="width: 100%; background: var(--bg-secondary); color: var(--text-primary); border: 1px solid var(--border-color); padding: 10px 14px; border-radius: var(--radius-sm); font-size: 14px; resize: vertical;"></textarea>
+        </div>
+
+        <button id="run_scan_btn" class="btn btn-primary" style="width: 100%; padding: 12px; font-size: 16px; font-weight: 600;">
+            ▶ Run AI Scan
+        </button>
+    </div>
+
+    <!-- Right Column: Skills Management -->
+    <div class="card" style="padding: 20px;">
+        <h3 style="margin-bottom: 16px; color: var(--accent-cyan);">🧠 Skills / Knowledge Base</h3>
+
+        <div class="form-group" style="margin-bottom: 12px;">
+            <label style="display: block; margin-bottom: 6px; font-size: 13px; color: var(--text-primary);">Skill Category</label>
+            <input type="text" id="skill_category" placeholder="e.g., xss, sqli, idor"
+                   style="width: 100%; background: var(--bg-secondary); color: var(--text-primary); border: 1px solid var(--border-color); padding: 8px 12px; border-radius: var(--radius-sm); font-size: 13px;">
+        </div>
+
+        <div class="form-group" style="margin-bottom: 12px;">
+            <label style="display: block; margin-bottom: 6px; font-size: 13px; color: var(--text-primary);">Skill Content (paste report/lab details)</label>
+            <textarea id="skill_content" rows="4" placeholder="Paste vulnerability details, POCs, or lab reports here..."
+                      style="width: 100%; background: var(--bg-secondary); color: var(--text-primary); border: 1px solid var(--border-color); padding: 8px 12px; border-radius: var(--radius-sm); font-size: 13px; resize: vertical;"></textarea>
+        </div>
+
+        <button id="add_skill_btn" class="btn btn-secondary" style="width: 100%; padding: 8px; font-size: 13px; margin-bottom: 16px;">
+            + Add Skill
+        </button>
+
+        <div id="skills_list" style="margin-top: 12px;">
+            <p style="color: var(--text-muted); font-size: 13px;">Loading skills...</p>
+        </div>
+    </div>
+</div>
+
+<!-- Results Section -->
+<div id="results_section" style="display: none;">
+    <div class="card" style="padding: 20px;">
+        <h3 style="margin-bottom: 16px; color: var(--accent-cyan);">📊 AI Analysis Results</h3>
+
+        <div style="margin-bottom: 20px;">
+            <h4 style="font-size: 14px; color: var(--text-secondary); margin-bottom: 8px;">📋 Extracted Target Data</h4>
+            <pre id="target_data_output" style="background: var(--bg-tertiary); padding: 12px; border-radius: var(--radius-sm); font-size: 12px; max-height: 250px; overflow-y: auto; color: var(--text-primary); border: 1px solid var(--border-color); white-space: pre-wrap;"></pre>
+        </div>
+
+        <div style="margin-bottom: 20px;">
+            <h4 style="font-size: 14px; color: var(--text-secondary); margin-bottom: 8px;">🔀 Router Agent (Skill Matching)</h4>
+            <div id="router_output" style="background: var(--bg-tertiary); padding: 12px; border-radius: var(--radius-sm); font-size: 13px; color: var(--text-primary); border: 1px solid var(--border-color); min-height: 40px; white-space: pre-wrap;"></div>
+        </div>
+
+        <div style="margin-bottom: 20px;">
+            <h4 style="font-size: 14px; color: var(--text-secondary); margin-bottom: 8px;">🔍 Analyzer Agent (Vulnerability Analysis)</h4>
+            <div id="analyzer_output" style="background: var(--bg-tertiary); padding: 12px; border-radius: var(--radius-sm); font-size: 13px; color: var(--text-primary); border: 1px solid var(--border-color); min-height: 40px; white-space: pre-wrap;"></div>
+        </div>
+
+        <div style="margin-bottom: 20px;">
+            <h4 style="font-size: 14px; color: var(--text-secondary); margin-bottom: 8px;">✅ Triage Agent (Final Verified Report)</h4>
+            <div id="triage_output" style="background: var(--bg-tertiary); padding: 12px; border-radius: var(--radius-sm); font-size: 13px; color: var(--text-primary); border: 1px solid var(--border-color); min-height: 40px; white-space: pre-wrap;"></div>
+        </div>
+
+        <!-- Save Results Buttons -->
+        <div style="display: flex; gap: 12px; margin-top: 16px;">
+            <button id="save_results_btn" class="btn btn-primary" style="padding: 10px 20px; font-size: 14px; flex: 1;">
+                💾 Save Results
+            </button>
+            <button id="download_results_btn" class="btn btn-secondary" style="padding: 10px 20px; font-size: 14px; flex: 1;">
+                ⬇ Download as TXT
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Saved Reports Section -->
+<div class="card" style="padding: 20px; margin-top: 20px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 12px;">
+        <h3 style="color: var(--accent-cyan); margin: 0;">📂 Saved Reports</h3>
+        <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+            <span id="reports_count_badge" style="display: none; background: var(--bg-tertiary); color: var(--accent-cyan); padding: 4px 12px; border-radius: 12px; font-size: 12px; border: 1px solid var(--border-color);">0 reports</span>
+            <input type="text" id="reports_search" placeholder="🔍 Filter reports..." oninput="filterReports()" style="background: var(--bg-secondary); border: 1px solid var(--border-color); color: var(--text-primary); padding: 6px 12px; border-radius: 6px; font-size: 13px; width: 200px;">
+            <button onclick="loadSavedReports()" title="Refresh" style="background: var(--bg-tertiary); color: var(--text-secondary); border: 1px solid var(--border-color); padding: 6px 10px; border-radius: 6px; cursor: pointer; font-size: 13px;">↻</button>
+        </div>
+    </div>
+    <div id="saved_reports_list" style="margin-top: 12px;">
+        <p style="color: var(--text-muted); font-size: 13px;">No saved reports yet.</p>
+    </div>
+</div>
+
+<!-- Report Viewer Modal -->
+<div id="report_modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.75); z-index: 1000; padding: 30px; overflow-y: auto;" onclick="if(event.target===this)closeReportModal()">
+    <div style="background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 12px; max-width: 1000px; margin: 0 auto; box-shadow: var(--shadow-lg);">
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; border-bottom: 1px solid var(--border-color); position: sticky; top: 0; background: var(--bg-secondary); border-radius: 12px 12px 0 0; z-index: 1;">
+            <div>
+                <h4 id="report_modal_title" style="margin: 0; color: var(--accent-cyan); font-size: 15px;">📄 Report</h4>
+                <span id="report_modal_meta" style="font-size: 11px; color: var(--text-muted);"></span>
+            </div>
+            <div style="display: flex; gap: 8px;">
+                <button id="report_modal_download" style="background: var(--accent-green); color: var(--bg-primary); border: none; padding: 6px 14px; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 600;">⬇ Download</button>
+                <button onclick="closeReportModal()" style="background: var(--bg-tertiary); color: var(--text-primary); border: 1px solid var(--border-color); padding: 6px 14px; border-radius: 6px; cursor: pointer; font-size: 12px;">✕ Close</button>
+            </div>
+        </div>
+        <div style="padding: 20px; max-height: 70vh; overflow-y: auto;">
+            <pre id="report_modal_content" style="background: var(--bg-primary); padding: 16px; border-radius: 8px; border: 1px solid var(--border-color); font-family: var(--font-mono); font-size: 12px; color: var(--text-primary); white-space: pre-wrap; word-wrap: break-word; margin: 0; line-height: 1.5;"></pre>
+        </div>
+    </div>
+</div>
+
+<style>
+.report-card {
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 14px 16px;
+    margin-bottom: 10px;
+    transition: all var(--transition-fast);
+    cursor: default;
+}
+.report-card:hover {
+    border-color: var(--accent-cyan);
+    background: var(--bg-hover);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-sm);
+}
+.report-card-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+.report-card-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex: 1;
+    min-width: 0;
+}
+.report-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    background: rgba(0, 212, 255, 0.1);
+    border: 1px solid rgba(0, 212, 255, 0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+}
+.report-meta {
+    min-width: 0;
+    flex: 1;
+}
+.report-filename {
+    font-size: 14px;
+    color: var(--text-primary);
+    font-weight: 500;
+    word-break: break-all;
+}
+.report-submeta {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 2px;
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+.report-submeta .sep { color: var(--border-light); }
+.report-actions {
+    display: flex;
+    gap: 6px;
+    flex-shrink: 0;
+}
+.report-btn {
+    border: none;
+    padding: 7px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 500;
+    transition: all var(--transition-fast);
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+.report-btn-view { background: var(--accent-cyan); color: var(--bg-primary); }
+.report-btn-view:hover { background: #00b8dd; }
+.report-btn-download { background: var(--bg-secondary); color: var(--text-primary); border: 1px solid var(--border-color); }
+.report-btn-download:hover { border-color: var(--accent-green); color: var(--accent-green); }
+.report-btn-delete { background: transparent; color: var(--text-muted); border: 1px solid var(--border-color); }
+.report-btn-delete:hover { background: rgba(248, 81, 73, 0.1); color: var(--accent-red); border-color: var(--accent-red); }
+.reports-empty {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--text-muted);
+}
+.reports-empty-icon { font-size: 40px; opacity: 0.4; margin-bottom: 10px; }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const PROVIDERS = {{ providers | tojson }};
+const SELECTED_PROVIDER = '{{ selected_provider }}';
+const SELECTED_MODEL = '{{ selected_model }}';
+
+document.addEventListener('DOMContentLoaded', function() {
+    checkStatus();
+    loadSkills();
+    initProviderUI();
+    loadSavedReports();
+});
+
+// ─── Provider Management ───────────────────────────────────────
+function initProviderUI() {
+    populateModels();
+    updateKeyStatus();
+    updateGetKeyLink();
+}
+
+function getCurrentProviderData() {
+    const pid = document.getElementById('provider-select').value;
+    return PROVIDERS.find(p => p.id === pid) || PROVIDERS[0];
+}
+
+function populateModels() {
+    const provider = getCurrentProviderData();
+    const modelSelect = document.getElementById('model-select');
+    modelSelect.innerHTML = '';
+    provider.models.forEach(m => {
+        const opt = document.createElement('option');
+        opt.value = m;
+        opt.textContent = m;
+        if (m === SELECTED_MODEL || m === provider.default_model) {
+            opt.selected = true;
+        }
+        modelSelect.appendChild(opt);
+    });
+}
+
+function updateKeyStatus() {
+    const provider = getCurrentProviderData();
+    const statusEl = document.getElementById('key-status-text');
+    if (provider.key_set) {
+        statusEl.innerHTML = '✅ Key saved: <code>' + provider.masked_key + '</code>';
+        statusEl.style.color = 'var(--accent-green)';
+    } else {
+        statusEl.innerHTML = '❌ No API key set for ' + provider.name;
+        statusEl.style.color = 'var(--accent-red)';
+    }
+}
+
+function updateGetKeyLink() {
+    const provider = getCurrentProviderData();
+    document.getElementById('get-key-link').href = provider.get_key_url;
+}
+
+function onProviderChange() {
+    const pid = document.getElementById('provider-select').value;
+    fetch('/ai-assistant/api/config/provider', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ provider_id: pid })
+    }).then(r => r.json()).then(data => {
+        if (data.success) {
+            populateModels();
+            updateKeyStatus();
+            updateGetKeyLink();
+            checkStatus();
+            onModelChange();
+        }
+    });
+}
+
+function onModelChange() {
+    const pid = document.getElementById('provider-select').value;
+    const model = document.getElementById('model-select').value;
+    fetch('/ai-assistant/api/config/provider', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ provider_id: pid, model: model })
+    });
+}
+
+document.getElementById('save-key-btn').addEventListener('click', function() {
+    const pid = document.getElementById('provider-select').value;
+    const apiKey = document.getElementById('api-key-input').value.trim();
+    if (!apiKey) { alert('Please paste the API key first.'); return; }
+    fetch('/ai-assistant/api/config/api-key', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ provider_id: pid, api_key: apiKey })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            document.getElementById('api-key-input').value = '';
+            const provider = PROVIDERS.find(p => p.id === pid);
+            if (provider) {
+                provider.key_set = true;
+                provider.masked_key = apiKey.substring(0, 4) + '...' + apiKey.slice(-4);
+            }
+            updateKeyStatus();
+            checkStatus();
+        } else { alert(data.error || 'Failed'); }
+    });
+});
+
+// ─── Status Check ──────────────────────────────────────────────
+function checkStatus() {
+    fetch('/ai-assistant/api/status')
+        .then(r => r.json())
+        .then(data => {
+            const banner = document.getElementById('status-banner');
+            if (!data.gemini_configured) {
+                banner.style.display = 'block';
+                banner.style.background = 'rgba(210, 153, 34, 0.15)';
+                banner.style.border = '1px solid var(--accent-orange)';
+                banner.style.color = 'var(--accent-orange)';
+                banner.innerHTML = '⚠ <strong>' + data.provider_name + '</strong> API key is not set.';
+            } else if (data.skills_count === 0) {
+                banner.style.display = 'block';
+                banner.style.background = 'rgba(0, 212, 255, 0.1)';
+                banner.style.border = '1px solid var(--accent-cyan)';
+                banner.style.color = 'var(--accent-cyan)';
+                banner.innerHTML = 'ℹ <strong>' + data.provider_name + '</strong> is ready! Add a skill.';
+            } else {
+                banner.style.display = 'block';
+                banner.style.background = 'rgba(63, 185, 80, 0.1)';
+                banner.style.border = '1px solid var(--accent-green)';
+                banner.style.color = 'var(--accent-green)';
+                banner.innerHTML = '✅ <strong>' + data.provider_name + '</strong> ready. ' + data.skills_count + ' skill(s).';
+            }
+        });
+}
+
+// ─── Skills Management ─────────────────────────────────────────
+function loadSkills() {
+    fetch('/ai-assistant/api/skills')
+        .then(r => r.json())
+        .then(data => {
+            const container = document.getElementById('skills_list');
+            if (data.skills && data.skills.length > 0) {
+                container.innerHTML = '<h4 style="font-size: 13px; margin-bottom: 8px;">Loaded:</h4>' +
+                    data.skills.map(s => '<div style="display: flex; justify-content: space-between; padding: 6px 10px; background: var(--bg-tertiary); border-radius: 4px; margin-bottom: 4px;"><span style="font-size: 13px;">📄 ' + s.name + ' (' + s.size + ' bytes)</span><button onclick="deleteSkill(\'' + s.name + '\')" style="background: none; border: none; color: var(--accent-red); cursor: pointer; font-size: 16px;">×</button></div>').join('');
+            } else {
+                container.innerHTML = '<p style="color: var(--text-muted); font-size: 13px;">No skills loaded.</p>';
+            }
+        });
+}
+
+function deleteSkill(name) {
+    if (!confirm('Delete skill "' + name + '"?')) return;
+    fetch('/ai-assistant/api/skills/' + name, { method: 'DELETE' })
+        .then(r => r.json())
+        .then(data => { if (data.success) { loadSkills(); checkStatus(); } });
+}
+
+document.getElementById('add_skill_btn').addEventListener('click', function() {
+    const category = document.getElementById('skill_category').value.trim();
+    const content = document.getElementById('skill_content').value.trim();
+    if (!category || !content) { alert('Please enter both.'); return; }
+    fetch('/ai-assistant/api/skills', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ category, content })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            document.getElementById('skill_category').value = '';
+            document.getElementById('skill_content').value = '';
+            loadSkills();
+            checkStatus();
+        } else { alert(data.error || 'Failed'); }
+    });
+});
+
+// ─── Save / Download Results ───────────────────────────────────
+function getAllResultsText() {
+    const target = document.getElementById('target_data_output')?.textContent || '';
+    const router = document.getElementById('router_output')?.textContent || '';
+    const analyzer = document.getElementById('analyzer_output')?.textContent || '';
+    const triage = document.getElementById('triage_output')?.textContent || '';
+    const url = document.getElementById('target_url')?.value || '';
+    let text = '═══════════════════════════════════════════════\n';
+    text += '  AI ASSISTANT - VULNERABILITY ANALYSIS REPORT\n';
+    text += '═══════════════════════════════════════════════\n\n';
+    text += 'Target URL: ' + url + '\n';
+    text += 'Date: ' + new Date().toISOString() + '\n\n';
+    text += '--- EXTRACTED TARGET DATA ---\n' + target + '\n\n';
+    text += '--- ROUTER AGENT ---\n' + router + '\n\n';
+    text += '--- ANALYZER AGENT ---\n' + analyzer + '\n\n';
+    text += '--- TRIAGE AGENT (Final Report) ---\n' + triage + '\n\n';
+    text += '═══════════════════════════════════════════════\n';
+    text += '  END OF REPORT\n';
+    text += '═══════════════════════════════════════════════\n';
+    return text;
+}
+
+document.getElementById('save_results_btn').addEventListener('click', function() {
+    const text = getAllResultsText();
+    const btn = this;
+    const origText = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = '⏳ Saving...';
+    fetch('/ai-assistant/api/save-results', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ results: text })
+    })
+    .then(r => r.json())
+    .then(data => {
+        btn.disabled = false;
+        btn.textContent = origText;
+        if (data.success) {
+            loadSavedReports();
+            // Brief visual confirmation
+            btn.textContent = '✓ Saved!';
+            setTimeout(() => { btn.textContent = origText; }, 2000);
+        } else {
+            alert('Failed to save: ' + (data.error || 'unknown error'));
+        }
+    })
+    .catch(err => {
+        btn.disabled = false;
+        btn.textContent = origText;
+        alert('Error saving: ' + err);
+    });
+});
+
+document.getElementById('download_results_btn').addEventListener('click', function() {
+    const text = getAllResultsText();
+    const blob = new Blob([text], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'ai_report_' + Date.now() + '.txt';
+    a.click();
+    URL.revokeObjectURL(url);
+});
+
+// ─── Saved Reports ─────────────────────────────────────────────
+let _allReports = [];  // cached for filtering
+
+function formatSize(bytes) {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
+}
+
+function formatDate(ts) {
+    const d = new Date(ts * 1000);
+    return d.toLocaleString(undefined, {
+        year: 'numeric', month: 'short', day: '2-digit',
+        hour: '2-digit', minute: '2-digit'
+    });
+}
+
+function loadSavedReports() {
+    fetch('/ai-assistant/api/reports')
+    .then(r => r.json())
+    .then(data => {
+        _allReports = (data.success && data.reports) ? data.reports : [];
+        renderReports(_allReports);
+    })
+    .catch(err => {
+        document.getElementById('saved_reports_list').innerHTML =
+            '<p style="color: var(--accent-red); font-size: 13px;">Failed to load reports: ' + err + '</p>';
+    });
+}
+
+function renderReports(reports) {
+    const list = document.getElementById('saved_reports_list');
+    const badge = document.getElementById('reports_count_badge');
+
+    // Update count badge
+    if (_allReports.length > 0) {
+        badge.style.display = 'inline-block';
+        badge.textContent = _allReports.length + ' report' + (_allReports.length !== 1 ? 's' : '');
+    } else {
+        badge.style.display = 'none';
+    }
+
+    if (!reports || reports.length === 0) {
+        if (_allReports.length === 0) {
+            list.innerHTML = '<div class="reports-empty">' +
+                '<div class="reports-empty-icon">📭</div>' +
+                '<div style="font-size: 14px; color: var(--text-secondary); margin-bottom: 4px;">No saved reports yet</div>' +
+                '<div style="font-size: 12px;">Run an AI scan and click "Save Results" to store reports here.</div>' +
+                '</div>';
+        } else {
+            list.innerHTML = '<div class="reports-empty">' +
+                '<div class="reports-empty-icon">🔍</div>' +
+                '<div style="font-size: 13px;">No reports match your filter.</div>' +
+                '</div>';
+        }
+        return;
+    }
+
+    // Escape HTML to prevent XSS from filename (filenames come from disk,
+    // but defense in depth is good practice)
+    function esc(s) {
+        return String(s)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    list.innerHTML = reports.map(report => {
+        const date = formatDate(report.date);
+        const size = formatSize(report.size);
+        // Extract a short timestamp from the filename for display
+        const m = report.filename.match(/ai_report_(\d{4})(\d{2})(\d{2})_(\d{2})(\d{2})(\d{2})/);
+        const shortDate = m ? `${m[1]}-${m[2]}-${m[3]} ${m[4]}:${m[5]}:${m[6]}` : date;
+        const safeId = esc(report.id);
+        const safeFilename = esc(report.filename);
+
+        return '<div class="report-card" data-filename="' + safeFilename.toLowerCase() + '">' +
+            '<div class="report-card-row">' +
+                '<div class="report-card-info">' +
+                    '<div class="report-icon">📄</div>' +
+                    '<div class="report-meta">' +
+                        '<div class="report-filename">' + safeFilename + '</div>' +
+                        '<div class="report-submeta">' +
+                            '<span>📅 ' + esc(shortDate) + '</span>' +
+                            '<span class="sep">·</span>' +
+                            '<span>💾 ' + esc(size) + '</span>' +
+                            '<span class="sep">·</span>' +
+                            '<span>ID: ' + safeId + '</span>' +
+                        '</div>' +
+                    '</div>' +
+                '</div>' +
+                '<div class="report-actions">' +
+                    '<button class="report-btn report-btn-view" onclick="viewReport(\'' + safeId + '\')">👁 View</button>' +
+                    '<button class="report-btn report-btn-download" onclick="downloadReport(\'' + safeId + '\')">⬇</button>' +
+                    '<button class="report-btn report-btn-delete" onclick="deleteReport(\'' + safeId + '\')" title="Delete">🗑</button>' +
+                '</div>' +
+            '</div>' +
+        '</div>';
+    }).join('');
+}
+
+function filterReports() {
+    const q = document.getElementById('reports_search').value.toLowerCase().trim();
+    if (!q) {
+        renderReports(_allReports);
+        return;
+    }
+    const filtered = _allReports.filter(r => r.filename.toLowerCase().includes(q));
+    renderReports(filtered);
+}
+
+function viewReport(reportId) {
+    fetch('/ai-assistant/api/reports/' + reportId)
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            const modal = document.getElementById('report_modal');
+            const content = document.getElementById('report_modal_content');
+            const title = document.getElementById('report_modal_title');
+            const meta = document.getElementById('report_modal_meta');
+            const dlBtn = document.getElementById('report_modal_download');
+
+            // Escape HTML to prevent XSS from report content
+            content.textContent = data.content || '(empty report)';
+            title.textContent = '📄 ' + data.filename;
+
+            // Find the report to get size + date
+            const r = _allReports.find(x => x.id === reportId);
+            if (r) {
+                meta.textContent = formatDate(r.date) + ' · ' + formatSize(r.size);
+            } else {
+                meta.textContent = '';
+            }
+
+            // Wire up the download button
+            dlBtn.onclick = () => downloadReport(reportId);
+
+            modal.style.display = 'block';
+            document.body.style.overflow = 'hidden';
+        } else {
+            alert('Failed to load report: ' + (data.error || 'unknown error'));
+        }
+    })
+    .catch(err => alert('Failed to load report: ' + err));
+}
+
+function closeReportModal() {
+    document.getElementById('report_modal').style.display = 'none';
+    document.body.style.overflow = '';
+}
+
+// Close modal on Escape key
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') closeReportModal();
+});
+
+function downloadReport(reportId) {
+    window.location.href = '/ai-assistant/api/reports/' + reportId + '/download';
+}
+
+function deleteReport(reportId) {
+    const r = _allReports.find(x => x.id === reportId);
+    const fname = r ? r.filename : reportId;
+    if (!confirm('Delete this report?\n\n' + fname + '\n\nThis cannot be undone.')) return;
+    fetch('/ai-assistant/api/reports/' + reportId, { method: 'DELETE' })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            loadSavedReports();
+        } else {
+            alert('Failed to delete: ' + (data.error || 'unknown error'));
+        }
+    })
+    .catch(err => alert('Failed to delete: ' + err));
+}
+
+// ─── Run Scan ──────────────────────────────────────────────────
+document.getElementById('run_scan_btn').addEventListener('click', function() {
+    const url = document.getElementById('target_url').value.trim();
+    const cookie = document.getElementById('auth_cookie').value.trim();
+    const prompt = document.getElementById('custom_prompt').value.trim();
+    if (!url) { alert('Please enter a target URL.'); return; }
+
+    const btn = document.getElementById('run_scan_btn');
+    btn.disabled = true;
+    btn.textContent = '⏳ Running...';
+    document.getElementById('results_section').style.display = 'block';
+    document.getElementById('target_data_output').textContent = 'Crawling...';
+    document.getElementById('router_output').textContent = 'Waiting...';
+    document.getElementById('analyzer_output').textContent = 'Waiting...';
+    document.getElementById('triage_output').textContent = 'Waiting...';
+
+    fetch('/ai-assistant/api/scan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url, cookie, prompt })
+    })
+    .then(r => r.json())
+    .then(data => {
+        btn.disabled = false;
+        btn.textContent = '▶ Run AI Scan';
+        if (data.success) {
+            document.getElementById('target_data_output').textContent = data.target_data || '';
+            document.getElementById('router_output').textContent = data.router_result || '';
+            document.getElementById('analyzer_output').textContent = data.analyzer_result || '';
+            document.getElementById('triage_output').textContent = data.triage_result || '';
+        } else {
+            document.getElementById('target_data_output').textContent = data.target_data || '';
+            document.getElementById('router_output').textContent = 'Error: ' + (data.error || '');
+            document.getElementById('analyzer_output').textContent = '—';
+            document.getElementById('triage_output').textContent = '—';
+        }
+    })
+    .catch(err => {
+        btn.disabled = false;
+        btn.textContent = '▶ Run AI Scan';
+        document.getElementById('router_output').textContent = 'Failed: ' + err;
+    });
+});
+</script>
+{% endblock %}

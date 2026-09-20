@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% block title %}Configurations - Pentest AI Platform{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Configurations</h1>
+        <p class="page-subtitle">Manage scan configurations and tool settings</p>
+    </div>
+    <a href="{{ url_for('configs.create_config') }}" class="btn btn-primary">New Configuration</a>
+</div>
+
+<!-- Type filter tabs -->
+<div style="display: flex; gap: 0.5rem; margin-bottom: 1.5rem; flex-wrap: wrap;">
+    <a href="{{ url_for('configs.list_configs') }}"
+       class="btn btn-{{ 'primary' if not current_type else 'secondary' }} btn-sm">All</a>
+    <a href="{{ url_for('configs.list_configs', type='recon') }}"
+       class="btn btn-{{ 'primary' if current_type == 'recon' else 'secondary' }} btn-sm">Recon</a>
+    <a href="{{ url_for('configs.list_configs', type='vuln_scan') }}"
+       class="btn btn-{{ 'primary' if current_type == 'vuln_scan' else 'secondary' }} btn-sm">Vuln Scan</a>
+    <a href="{{ url_for('configs.list_configs', type='full') }}"
+       class="btn btn-{{ 'primary' if current_type == 'full' else 'secondary' }} btn-sm">Full</a>
+    <a href="{{ url_for('configs.list_configs', type='custom') }}"
+       class="btn btn-{{ 'primary' if current_type == 'custom' else 'secondary' }} btn-sm">Custom</a>
+    <a href="{{ url_for('configs.tools_status') }}" class="btn btn-outline btn-sm" style="margin-left: auto;">Tool Status</a>
+</div>
+
+{% if configs %}
+<div class="grid grid-3">
+    {% for config in configs %}
+    <div class="card">
+        <div class="card-header">
+            <a href="{{ url_for('configs.view_config', config_id=config.id) }}" class="card-title">{{ config.name }}</a>
+            {% if config.is_default %}
+            <span class="badge badge-info">Default</span>
+            {% else %}
+            <span class="badge badge-secondary">Custom</span>
+            {% endif %}
+        </div>
+        <div class="card-body">
+            <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem;">
+                <span class="badge badge-{{ 'warning' if config.config_type == 'vuln_scan' else ('success' if config.config_type == 'recon' else ('danger' if config.config_type == 'full' else 'secondary')) }}">
+                    {{ config.config_type }}
+                </span>
+                <span style="font-size: 0.8rem; color: var(--text-muted);">
+                    {{ config.get_enabled_tools()|length }} tools enabled
+                </span>
+            </div>
+            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 1rem;">
+                {% for tool_name in config.get_enabled_tools()[:5] %}
+                <span style="font-family: var(--font-mono); font-size: 0.75rem; color: var(--accent-cyan); background: var(--bg-tertiary); padding: 0.15rem 0.5rem; border-radius: var(--radius-sm);">{{ tool_name }}</span>
+                {% endfor %}
+                {% if config.get_enabled_tools()|length > 5 %}
+                <span style="font-size: 0.75rem; color: var(--text-muted);">+{{ config.get_enabled_tools()|length - 5 }} more</span>
+                {% endif %}
+            </div>
+            <div style="display: flex; gap: 0.5rem; border-top: 1px solid var(--border-color); padding-top: 0.75rem;">
+                <a href="{{ url_for('configs.view_config', config_id=config.id) }}" class="btn btn-secondary btn-sm">View</a>
+                <form method="POST" action="{{ url_for('configs.clone_config', config_id=config.id) }}" style="display: inline;">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="new_name" value="{{ config.name }} (Clone)">
+                    <button type="submit" class="btn btn-outline btn-sm">Clone</button>
+                </form>
+                {% if not config.is_default %}
+                <a href="{{ url_for('configs.edit_config', config_id=config.id) }}" class="btn btn-secondary btn-sm">Edit</a>
+                <form method="POST" action="{{ url_for('configs.delete_config', config_id=config.id) }}" style="display: inline;"
+                      onsubmit="return confirm('Delete this configuration?');">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+                </form>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="empty-state">
+    <div class="empty-state-icon">&#x2699;</div>
+    <h3 class="empty-state-title">No Configurations</h3>
+    <p class="empty-state-text">Create a scan configuration to define which tools and parameters to use.</p>
+    <a href="{{ url_for('configs.create_config') }}" class="btn btn-primary">Create Configuration</a>
+</div>
+{% endif %}
+{% endblock %}

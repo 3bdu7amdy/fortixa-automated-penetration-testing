@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block title %}403 - Forbidden{% endblock %}
+{% block content %}
+<div class="error-container">
+    <div class="error-code">403</div>
+    <div class="error-message">You do not have permission to access this page.</div>
+    <a href="{{ url_for('dashboard.index') }}" class="btn btn-primary">Back to Dashboard</a>
+</div>
+{% endblock %}

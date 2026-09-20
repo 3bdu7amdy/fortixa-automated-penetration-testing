@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}Register - Pentest AI Platform{% endblock %}
+
+{% block content %}
+<div class="auth-container">
+    <div class="auth-card">
+        <h1 class="auth-title">Create Account</h1>
+        <p class="auth-subtitle">Join the Pentest AI Platform</p>
+
+        <form method="POST" action="{{ url_for('auth.register') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+            <div class="form-group">
+                <label class="form-label" for="username">Username</label>
+                <input type="text" id="username" name="username" class="form-input"
+                       placeholder="Choose a username (3+ characters)" required minlength="3" autofocus>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="email">Email</label>
+                <input type="email" id="email" name="email" class="form-input"
+                       placeholder="Enter your email address" required>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="password">Password</label>
+                <input type="password" id="password" name="password" class="form-input"
+                       placeholder="Create a password (8+ characters)" required minlength="8">
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="confirm_password">Confirm Password</label>
+                <input type="password" id="confirm_password" name="confirm_password" class="form-input"
+                       placeholder="Repeat your password" required minlength="8">
+            </div>
+
+            <button type="submit" class="btn btn-primary btn-lg" style="width: 100%;">Create Account</button>
+        </form>
+
+        <div class="auth-footer">
+            <p>Already have an account? <a href="{{ url_for('auth.login') }}">Sign In</a></p>
+        </div>
+    </div>
+</div>
+{% endblock %}

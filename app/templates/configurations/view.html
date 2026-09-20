@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+{% block title %}{{ config.name }} - Pentest AI Platform{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">{{ config.name }}</h1>
+        <p class="page-subtitle">
+            <span class="badge badge-{{ 'warning' if config.config_type == 'vuln_scan' else ('success' if config.config_type == 'recon' else ('danger' if config.config_type == 'full' else 'secondary')) }}">
+                {{ config.config_type }}
+            </span>
+            {% if config.is_default %}
+            <span class="badge badge-info" style="margin-left: 0.5rem;">Default</span>
+            {% endif %}
+        </p>
+    </div>
+    <div style="display: flex; gap: 0.5rem;">
+        <form method="POST" action="{{ url_for('configs.clone_config', config_id=config.id) }}" style="display: inline;">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="new_name" value="{{ config.name }} (Clone)">
+            <button type="submit" class="btn btn-outline btn-sm">Clone</button>
+        </form>
+        {% if not config.is_default %}
+        <a href="{{ url_for('configs.edit_config', config_id=config.id) }}" class="btn btn-secondary btn-sm">Edit</a>
+        <form method="POST" action="{{ url_for('configs.delete_config', config_id=config.id) }}" style="display: inline;"
+              onsubmit="return confirm('Delete this configuration?');">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+        </form>
+        {% endif %}
+        <a href="{{ url_for('configs.list_configs') }}" class="btn btn-secondary btn-sm">Back</a>
+    </div>
+</div>
+
+<!-- Stats -->
+<div class="stats-grid">
+    <div class="stat-card stat-scans">
+        <div class="stat-value">{{ enabled_tools|length }}</div>
+        <div class="stat-label">Enabled Tools</div>
+    </div>
+    <div class="stat-card stat-projects">
+        <div class="stat-value">{{ tool_settings|length }}</div>
+        <div class="stat-label">Total Tool Entries</div>
+    </div>
+    <div class="stat-card stat-info">
+        <div class="stat-value">{{ config.config_type }}</div>
+        <div class="stat-label">Config Type</div>
+    </div>
+</div>
+
+<!-- Tool list -->
+<div class="card">
+    <div class="card-header">
+        <h2 class="card-title">Tool Settings</h2>
+    </div>
+    <div class="card-body">
+        {% if tool_settings %}
+        <div class="table-container">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Tool</th>
+                        <th>Status</th>
+                        <th>Category</th>
+                        <th>Binary</th>
+                        <th>Input Type</th>
+                        <th>Flags</th>
+                        <th>Timeout</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for tool_name, opts in tool_settings.items() %}
+                    {% set tool_info = tool_registry.get_tool_info(tool_name) %}
+                    <tr>
+                        <td style="font-family: var(--font-mono); color: var(--accent-cyan);">{{ tool_name.replace('_', ' ').title() }}</td>
+                        <td>
+                            {% if opts.get('enabled', False) %}
+                            <span class="badge badge-success">Enabled</span>
+                            {% else %}
+                            <span class="badge badge-secondary">Disabled</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span class="badge badge-{{ 'warning' if tool_info.get('category') == 'vuln_scan' else ('info' if tool_info.get('category') == 'utility' else 'success') }}">
+                                {{ tool_info.get('category', 'unknown') }}
+                            </span>
+                        </td>
+                        <td style="font-family: var(--font-mono); font-size: 0.8rem; color: var(--accent-cyan);">
+                            {{ tool_info.get('tool', tool_name) }}
+                        </td>
+                        <td style="font-size: 0.85rem; color: var(--accent-orange);">
+                            {{ tool_info.get('input_type', '—') }}
+                        </td>
+                        <td style="font-family: var(--font-mono); font-size: 0.8rem; color: var(--text-secondary);">
+                            {% if opts.get('flags') %}
+                                {{ opts.flags|join(' ') }}
+                            {% elif opts.get('templates') %}
+                                {{ opts.templates|join(', ') }}
+                            {% else %}
+                                <span style="color: var(--text-muted);">default</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ opts.get('timeout', 300) }}s</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <p>No tool settings defined for this configuration.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

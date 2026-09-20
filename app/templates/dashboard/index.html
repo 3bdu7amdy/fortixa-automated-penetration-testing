@@ -1,0 +1,314 @@
+{% extends "base.html" %}
+{% block title %}Dashboard - Pentest AI Platform{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Dashboard</h1>
+        <p class="page-subtitle">Welcome back, {{ user.username }}. Here's your security overview.</p>
+    </div>
+    <div>
+        <a href="{{ url_for('scans.start_scan') }}" class="btn btn-primary">New Scan</a>
+        <a href="{{ url_for('projects.create_project') }}" class="btn btn-secondary">New Project</a>
+    </div>
+</div>
+
+<!-- Stats Grid -->
+<div class="stats-grid">
+    <div class="stat-card stat-projects">
+        <div class="stat-value">{{ projects|length }}</div>
+        <div class="stat-label">Projects</div>
+    </div>
+    <div class="stat-card stat-scans">
+        <div class="stat-value">{{ total_scans }}</div>
+        <div class="stat-label">Total Scans</div>
+    </div>
+    <div class="stat-card stat-critical">
+        <div class="stat-value">{{ findings_summary.get('critical', 0) }}</div>
+        <div class="stat-label">Critical</div>
+    </div>
+    <div class="stat-card stat-high">
+        <div class="stat-value">{{ findings_summary.get('high', 0) }}</div>
+        <div class="stat-label">High</div>
+    </div>
+    <div class="stat-card stat-medium">
+        <div class="stat-value">{{ findings_summary.get('medium', 0) }}</div>
+        <div class="stat-label">Medium</div>
+    </div>
+    <div class="stat-card stat-low">
+        <div class="stat-value">{{ findings_summary.get('low', 0) }}</div>
+        <div class="stat-label">Low</div>
+    </div>
+</div>
+
+<!-- Quick Actions -->
+<div class="card" style="margin-bottom: 1.5rem;">
+    <div class="card-header">
+        <h2 class="card-title">Quick Actions</h2>
+    </div>
+    <div class="card-body">
+        <div class="quick-actions">
+            <a href="{{ url_for('projects.create_project') }}" class="quick-action-btn">
+                <span class="action-icon">&#128193;</span> New Project
+            </a>
+            <a href="{{ url_for('scans.start_scan') }}" class="quick-action-btn">
+                <span class="action-icon">&#128270;</span> Start Scan
+            </a>
+            <a href="{{ url_for('reports.generate_report') }}" class="quick-action-btn">
+                <span class="action-icon">&#128196;</span> Generate Report
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Two Column Layout: Severity Chart + Active Scans -->
+<div class="grid grid-2">
+    <!-- Severity Distribution Chart -->
+    <div class="card">
+        <div class="card-header">
+            <h2 class="card-title">Severity Distribution</h2>
+        </div>
+        <div class="card-body">
+            {% if total_findings > 0 %}
+            <div class="severity-chart" id="severity-chart">
+                {% for sev in ['critical', 'high', 'medium', 'low', 'info'] %}
+                <div class="severity-chart-bar">
+                    <div class="bar severity-{{ sev }}" style="height: 0%;" data-count="{{ findings_summary.get(sev, 0) }}" data-max="{{ findings_summary.values()|max if findings_summary else 1 }}">
+                        <span class="bar-count">{{ findings_summary.get(sev, 0) }}</span>
+                    </div>
+                    <span class="bar-label">{{ sev }}</span>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="empty-state" style="padding: 2rem;">
+                <div class="empty-state-icon">&#x1F6E1;</div>
+                <p>No findings yet. Run a scan to discover vulnerabilities.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Active Scans -->
+    <div class="card">
+        <div class="card-header">
+            <h2 class="card-title">Active Scans</h2>
+            {% if running_scans > 0 %}
+            <span class="badge badge-warning">{{ running_scans }} running</span>
+            {% endif %}
+        </div>
+        <div class="card-body" id="active-scans-container">
+            {% if running_scans > 0 %}
+            <!-- Active scans will be populated by JS from API -->
+            <div id="active-scans-loading">
+                {% for scan in recent_scans %}
+                {% if scan.status in ['running', 'pending'] %}
+                <div class="active-scan-card" data-scan-id="{{ scan.id }}">
+                    <div class="active-scan-header">
+                        <div class="active-scan-name">
+                            <a href="{{ url_for('scans.view_scan', scan_id=scan.id) }}">{{ scan.name }}</a>
+                        </div>
+                        <span class="badge badge-{{ 'warning' if scan.status == 'running' else 'secondary' }}">{{ scan.status }}</span>
+                    </div>
+                    <div class="active-scan-meta">
+                        {{ scan.scan_type }} &middot; {{ scan.target.value if scan.target else 'Unknown' }} &middot; {{ scan.created_at.strftime('%b %d, %H:%M') }}
+                    </div>
+                    <div class="active-scan-progress">
+                        <div class="progress-bar">
+                            <div class="progress-fill progress-info" style="width: {{ scan.progress_percentage }}%"></div>
+                        </div>
+                        <span class="progress-text">{{ scan.progress_percentage }}%</span>
+                    </div>
+                </div>
+                {% endif %}
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="empty-state" style="padding: 2rem;">
+                <div class="empty-state-icon">&#9889;</div>
+                <p>No active scans. <a href="{{ url_for('scans.start_scan') }}">Start a scan</a></p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Two Column Layout: Recent Scans + Findings Overview -->
+<div class="grid grid-2" style="margin-top: 1.5rem;">
+    <!-- Recent Scans Table -->
+    <div class="card">
+        <div class="card-header">
+            <h2 class="card-title">Recent Scans</h2>
+            <a href="{{ url_for('scans.list_scans') }}" class="btn btn-outline btn-sm">View All</a>
+        </div>
+        <div class="card-body">
+            {% if recent_scans %}
+            <table class="recent-scans-table">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Target</th>
+                        <th>Status</th>
+                        <th>Progress</th>
+                        <th>Date</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for scan in recent_scans %}
+                    <tr>
+                        <td><a href="{{ url_for('scans.view_scan', scan_id=scan.id) }}" class="scan-name-link">{{ scan.name }}</a></td>
+                        <td class="scan-target">{{ scan.target.value if scan.target else '-' }}</td>
+                        <td><span class="badge badge-{{ 'success' if scan.status == 'completed' else 'warning' if scan.status == 'running' else 'danger' if scan.status == 'failed' else 'secondary' }}">{{ scan.status }}</span></td>
+                        <td>
+                            {% if scan.status in ['running', 'pending'] %}
+                            <div class="progress-bar" style="width: 80px; height: 6px;">
+                                <div class="progress-fill progress-info" style="width: {{ scan.progress_percentage }}%"></div>
+                            </div>
+                            {% elif scan.status == 'completed' %}
+                            <div class="progress-bar" style="width: 80px; height: 6px;">
+                                <div class="progress-fill progress-success" style="width: 100%"></div>
+                            </div>
+                            {% else %}
+                            <span style="color: var(--text-muted); font-size: 0.75rem;">-</span>
+                            {% endif %}
+                        </td>
+                        <td style="font-size: 0.75rem; color: var(--text-muted);">{{ scan.created_at.strftime('%b %d, %H:%M') }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <div class="empty-state">
+                <div class="empty-state-icon">&#x1F50D;</div>
+                <p>No scans yet. <a href="{{ url_for('scans.start_scan') }}">Start your first scan</a></p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Findings Overview -->
+    <div class="card">
+        <div class="card-header">
+            <h2 class="card-title">Findings Overview</h2>
+        </div>
+        <div class="card-body">
+            {% if total_findings > 0 %}
+            <div style="margin-bottom: 1rem;">
+                <div style="font-size: 0.875rem; margin-bottom: 0.5rem; display: flex; justify-content: space-between;">
+                    <span>Critical</span>
+                    <span style="color: var(--severity-critical);">{{ findings_summary.get('critical', 0) }}</span>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill progress-danger" style="width: {{ (findings_summary.get('critical', 0) / total_findings * 100) if total_findings else 0 }}%"></div>
+                </div>
+            </div>
+            <div style="margin-bottom: 1rem;">
+                <div style="font-size: 0.875rem; margin-bottom: 0.5rem; display: flex; justify-content: space-between;">
+                    <span>High</span>
+                    <span style="color: var(--severity-high);">{{ findings_summary.get('high', 0) }}</span>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill progress-warning" style="width: {{ (findings_summary.get('high', 0) / total_findings * 100) if total_findings else 0 }}%"></div>
+                </div>
+            </div>
+            <div style="margin-bottom: 1rem;">
+                <div style="font-size: 0.875rem; margin-bottom: 0.5rem; display: flex; justify-content: space-between;">
+                    <span>Medium</span>
+                    <span style="color: var(--severity-medium);">{{ findings_summary.get('medium', 0) }}</span>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill progress-info" style="width: {{ (findings_summary.get('medium', 0) / total_findings * 100) if total_findings else 0 }}%"></div>
+                </div>
+            </div>
+            <div style="margin-bottom: 1rem;">
+                <div style="font-size: 0.875rem; margin-bottom: 0.5rem; display: flex; justify-content: space-between;">
+                    <span>Low / Info</span>
+                    <span style="color: var(--severity-low);">{{ findings_summary.get('low', 0) + findings_summary.get('info', 0) }}</span>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill progress-success" style="width: {{ ((findings_summary.get('low', 0) + findings_summary.get('info', 0)) / total_findings * 100) if total_findings else 0 }}%"></div>
+                </div>
+            </div>
+            {% else %}
+            <div class="empty-state">
+                <div class="empty-state-icon">&#x1F6E1;</div>
+                <p>No findings yet. Run a scan to discover vulnerabilities.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Animate severity chart bars on load
+    var chartBars = document.querySelectorAll('.severity-chart-bar .bar');
+    if (chartBars.length > 0) {
+        var maxCount = 1;
+        chartBars.forEach(function(bar) {
+            var count = parseInt(bar.getAttribute('data-count') || '0');
+            if (count > maxCount) maxCount = count;
+        });
+
+        // Delay animation slightly for visual effect
+        setTimeout(function() {
+            chartBars.forEach(function(bar) {
+                var count = parseInt(bar.getAttribute('data-count') || '0');
+                var heightPercent = maxCount > 0 ? (count / maxCount * 80) : 0;
+                if (count === 0) heightPercent = 2; // minimum visible height
+                bar.style.height = heightPercent + '%';
+            });
+        }, 100);
+    }
+
+    // Active scans auto-update polling
+    var activeScanCards = document.querySelectorAll('.active-scan-card[data-scan-id]');
+    var activeScanIds = [];
+    activeScanCards.forEach(function(card) {
+        activeScanIds.push(card.getAttribute('data-scan-id'));
+    });
+
+    if (activeScanIds.length > 0) {
+        var activePollInterval = setInterval(function() {
+            var stillActive = false;
+            activeScanIds.forEach(function(scanId) {
+                fetch('/api/scans/' + scanId + '/status', {
+                    headers: {'X-CSRFToken': window.CSRF_TOKEN || ''}
+                })
+                .then(function(response) { return response.json(); })
+                .then(function(data) {
+                    if (data.status === 'completed' || data.status === 'failed' || data.status === 'cancelled') {
+                        // Scan finished - show toast and reload
+                        if (typeof window.PentestAI !== 'undefined' && window.PentestAI.showToast) {
+                            var icon = data.status === 'completed' ? '&#9989;' : '&#10060;';
+                            var type = data.status === 'completed' ? 'success' : 'error';
+                            window.PentestAI.showToast(
+                                type,
+                                'Scan ' + data.status,
+                                'Scan #' + scanId + ' has ' + data.status + '.',
+                                icon
+                            );
+                        }
+                        setTimeout(function() { location.reload(); }, 2000);
+                        clearInterval(activePollInterval);
+                    } else {
+                        // Update progress bar
+                        var card = document.querySelector('.active-scan-card[data-scan-id="' + scanId + '"]');
+                        if (card) {
+                            var fill = card.querySelector('.progress-fill');
+                            var text = card.querySelector('.progress-text');
+                            if (fill) fill.style.width = data.progress + '%';
+                            if (text) text.textContent = data.progress + '%';
+                            stillActive = true;
+                        }
+                    }
+                })
+                .catch(function() { /* silently retry */ });
+            });
+        }, 3000);
+    }
+});
+</script>
+{% endblock %}

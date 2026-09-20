@@ -1,0 +1,301 @@
+{% extends "base.html" %}
+{% block title %}AI Analysis - {{ scan.name }} - Pentest AI Platform{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">AI Analysis</h1>
+        <p class="page-subtitle">{{ scan.name }} &middot; {{ total_results }} results</p>
+    </div>
+    <div>
+        <form method="POST" action="{{ url_for('ai.analyze_scan', scan_id=scan.id) }}" style="display: inline;">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="btn btn-primary btn-sm">Re-Analyze with AI</button>
+        </form>
+        <a href="{{ url_for('scans.view_scan', scan_id=scan.id) }}" class="btn btn-secondary btn-sm">Back to Scan</a>
+    </div>
+</div>
+
+{% if total_results == 0 %}
+<div class="card">
+    <div class="card-body" style="text-align: center; padding: 3rem;">
+        <p style="color: var(--text-muted); font-size: 1.1rem;">No AI analysis results yet.</p>
+        <form method="POST" action="{{ url_for('ai.analyze_scan', scan_id=scan.id) }}" style="margin-top: 1rem;">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="btn btn-primary">Analyze with AI</button>
+        </form>
+    </div>
+</div>
+{% else %}
+
+<!-- Summary Stats -->
+<div class="stats-grid" style="grid-template-columns: repeat(4, 1fr); margin-bottom: 1.5rem;">
+    <div class="stat-card">
+        <div class="stat-value">{{ grouped.deduplication|length }}</div>
+        <div class="stat-label">Duplicates</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">{{ grouped.severity_suggestion|length }}</div>
+        <div class="stat-label">Severity Suggestions</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">{{ grouped.false_positive|length }}</div>
+        <div class="stat-label">Potential False Positives</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">{{ grouped.recommendation|length }}</div>
+        <div class="stat-label">Recommendations</div>
+    </div>
+</div>
+
+<!-- Deduplication Results -->
+{% if grouped.deduplication %}
+<div class="card" style="margin-bottom: 1.5rem;">
+    <div class="card-header">
+        <h2 class="card-title">Deduplication</h2>
+        <span class="badge badge-secondary">{{ grouped.deduplication|length }} duplicates found</span>
+    </div>
+    <div class="table-container">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Finding</th>
+                    <th>Original</th>
+                    <th>URL</th>
+                    <th>Category</th>
+                    <th>Confidence</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for analysis in grouped.deduplication %}
+                {% set data = analysis.result|from_json %}
+                <tr>
+                    <td style="font-size: 0.85rem;">#{{ analysis.finding_id }}</td>
+                    <td style="font-size: 0.85rem;">#{{ data.original_finding_id }}</td>
+                    <td style="font-family: var(--font-mono); font-size: 0.8rem; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ data.url or '-' }}</td>
+                    <td style="font-size: 0.85rem;">{{ data.category }}</td>
+                    <td>
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <div style="width: 60px; height: 6px; background: var(--bg-secondary); border-radius: 3px;">
+                                <div style="width: {{ (analysis.confidence_score * 100)|int }}%; height: 100%; background: var(--accent-cyan); border-radius: 3px;"></div>
+                            </div>
+                            <span style="font-size: 0.8rem; font-family: var(--font-mono);">{{ (analysis.confidence_score * 100)|int }}%</span>
+                        </div>
+                    </td>
+                    <td>
+                        {% if analysis.is_accepted is none %}
+                        <span class="badge badge-warning">Pending</span>
+                        {% elif analysis.is_accepted %}
+                        <span class="badge badge-success">Accepted</span>
+                        {% else %}
+                        <span class="badge badge-danger">Rejected</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if analysis.is_accepted is none %}
+                        <form method="POST" action="{{ url_for('ai.review_finding', finding_id=analysis.finding_id) }}" style="display: inline;">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <input type="hidden" name="analysis_type" value="deduplication">
+                            <button type="submit" name="action" value="accept" class="btn btn-success btn-sm" style="padding: 0.2rem 0.5rem; font-size: 0.75rem;">Accept</button>
+                            <button type="submit" name="action" value="reject" class="btn btn-outline btn-sm" style="padding: 0.2rem 0.5rem; font-size: 0.75rem;">Reject</button>
+                        </form>
+                        {% else %}
+                        <span style="color: var(--text-muted); font-size: 0.75rem;">Reviewed</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+
+<!-- Severity Suggestions -->
+{% if grouped.severity_suggestion %}
+<div class="card" style="margin-bottom: 1.5rem;">
+    <div class="card-header">
+        <h2 class="card-title">Severity Suggestions</h2>
+        <span class="badge badge-secondary">{{ grouped.severity_suggestion|length }} suggestions</span>
+    </div>
+    <div class="table-container">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Finding</th>
+                    <th>Current</th>
+                    <th>Suggested</th>
+                    <th>CVSS</th>
+                    <th>Category</th>
+                    <th>Confidence</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for analysis in grouped.severity_suggestion %}
+                {% set data = analysis.result|from_json %}
+                <tr>
+                    <td style="font-size: 0.85rem;">#{{ analysis.finding_id }}</td>
+                    <td><span class="badge badge-{{ data.current_severity }}">{{ data.current_severity }}</span></td>
+                    <td>
+                        {% if data.changed %}
+                        <span class="badge badge-{{ data.suggested_severity }}">{{ data.suggested_severity }}</span>
+                        {% else %}
+                        <span style="color: var(--text-muted); font-size: 0.8rem;">No change</span>
+                        {% endif %}
+                    </td>
+                    <td style="font-family: var(--font-mono); font-size: 0.85rem;">{{ data.suggested_cvss }}</td>
+                    <td style="font-size: 0.85rem;">{{ data.category }}</td>
+                    <td>
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <div style="width: 60px; height: 6px; background: var(--bg-secondary); border-radius: 3px;">
+                                <div style="width: {{ (analysis.confidence_score * 100)|int }}%; height: 100%; background: var(--accent-cyan); border-radius: 3px;"></div>
+                            </div>
+                            <span style="font-size: 0.8rem; font-family: var(--font-mono);">{{ (analysis.confidence_score * 100)|int }}%</span>
+                        </div>
+                    </td>
+                    <td>
+                        {% if analysis.is_accepted is none %}
+                        <span class="badge badge-warning">Pending</span>
+                        {% elif analysis.is_accepted %}
+                        <span class="badge badge-success">Accepted</span>
+                        {% else %}
+                        <span class="badge badge-danger">Rejected</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if analysis.is_accepted is none and data.changed %}
+                        <form method="POST" action="{{ url_for('ai.review_finding', finding_id=analysis.finding_id) }}" style="display: inline;">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <input type="hidden" name="analysis_type" value="severity_suggestion">
+                            <button type="submit" name="action" value="accept" class="btn btn-success btn-sm" style="padding: 0.2rem 0.5rem; font-size: 0.75rem;">Accept</button>
+                            <button type="submit" name="action" value="reject" class="btn btn-outline btn-sm" style="padding: 0.2rem 0.5rem; font-size: 0.75rem;">Reject</button>
+                        </form>
+                        {% elif not data.changed %}
+                        <span style="color: var(--text-muted); font-size: 0.75rem;">No change needed</span>
+                        {% else %}
+                        <span style="color: var(--text-muted); font-size: 0.75rem;">Reviewed</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+
+<!-- False Positive Detection -->
+{% if grouped.false_positive %}
+<div class="card" style="margin-bottom: 1.5rem;">
+    <div class="card-header">
+        <h2 class="card-title">False Positive Detection</h2>
+        <span class="badge badge-warning">{{ grouped.false_positive|length }} potential FPs</span>
+    </div>
+    <div class="table-container">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Finding</th>
+                    <th>Category</th>
+                    <th>Tool</th>
+                    <th>FP Score</th>
+                    <th>Reasoning</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for analysis in grouped.false_positive %}
+                {% set data = analysis.result|from_json %}
+                <tr>
+                    <td style="font-size: 0.85rem;">#{{ analysis.finding_id }}</td>
+                    <td style="font-size: 0.85rem;">{{ data.category }}</td>
+                    <td style="font-family: var(--font-mono); font-size: 0.8rem;">{{ data.tool_name }}</td>
+                    <td>
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <div style="width: 60px; height: 6px; background: var(--bg-secondary); border-radius: 3px;">
+                                <div style="width: {{ (data.fp_score * 100)|int }}%; height: 100%; background: var(--severity-high); border-radius: 3px;"></div>
+                            </div>
+                            <span style="font-size: 0.8rem; font-family: var(--font-mono);">{{ (data.fp_score * 100)|int }}%</span>
+                        </div>
+                    </td>
+                    <td style="font-size: 0.8rem; max-width: 300px;">{{ analysis.reasoning[:120] }}</td>
+                    <td>
+                        {% if analysis.is_accepted is none %}
+                        <span class="badge badge-warning">Pending</span>
+                        {% elif analysis.is_accepted %}
+                        <span class="badge badge-success">Confirmed FP</span>
+                        {% else %}
+                        <span class="badge badge-danger">Not FP</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if analysis.is_accepted is none %}
+                        <form method="POST" action="{{ url_for('ai.review_finding', finding_id=analysis.finding_id) }}" style="display: inline;">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <input type="hidden" name="analysis_type" value="false_positive">
+                            <button type="submit" name="action" value="accept" class="btn btn-success btn-sm" style="padding: 0.2rem 0.5rem; font-size: 0.75rem;">Confirm FP</button>
+                            <button type="submit" name="action" value="reject" class="btn btn-outline btn-sm" style="padding: 0.2rem 0.5rem; font-size: 0.75rem;">Not FP</button>
+                        </form>
+                        {% else %}
+                        <span style="color: var(--text-muted); font-size: 0.75rem;">Reviewed</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+
+<!-- Recommendations -->
+{% if grouped.recommendation %}
+<div class="card" style="margin-bottom: 1.5rem;">
+    <div class="card-header">
+        <h2 class="card-title">Recommendations</h2>
+        <span class="badge badge-info">{{ grouped.recommendation|length }} recommendations</span>
+    </div>
+    <div class="card-body">
+        {% for analysis in grouped.recommendation %}
+        {% set data = analysis.result|from_json %}
+        <div style="padding: 1rem; border-bottom: 1px solid var(--border-color); {% if loop.last %}border-bottom: none;{% endif %}">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem;">
+                <div>
+                    <span class="badge badge-{{ 'info' if data.recommendation_type == 'follow_up_testing' else data.severity or 'secondary' }}" style="margin-right: 0.5rem;">
+                        {{ data.recommendation_type | replace('_', ' ') | title }}
+                    </span>
+                    <span style="font-size: 0.85rem; color: var(--text-muted);">Finding #{{ analysis.finding_id }}</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                    <span style="font-size: 0.8rem; font-family: var(--font-mono); color: var(--accent-cyan);">{{ (analysis.confidence_score * 100)|int }}% confidence</span>
+                    {% if analysis.is_accepted is none %}
+                    <form method="POST" action="{{ url_for('ai.review_finding', finding_id=analysis.finding_id) }}" style="display: inline;">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <input type="hidden" name="analysis_type" value="recommendation">
+                        <button type="submit" name="action" value="accept" class="btn btn-success btn-sm" style="padding: 0.15rem 0.4rem; font-size: 0.7rem;">Accept</button>
+                        <button type="submit" name="action" value="reject" class="btn btn-outline btn-sm" style="padding: 0.15rem 0.4rem; font-size: 0.7rem;">Dismiss</button>
+                    </form>
+                    {% elif analysis.is_accepted %}
+                    <span class="badge badge-success">Accepted</span>
+                    {% else %}
+                    <span class="badge badge-danger">Dismissed</span>
+                    {% endif %}
+                </div>
+            </div>
+            <p style="font-size: 0.875rem; line-height: 1.5; color: var(--text-primary);">{{ data.recommendation }}</p>
+            {% if analysis.reasoning %}
+            <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem;"><em>Reasoning:</em> {{ analysis.reasoning }}</p>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+{% endif %}
+{% endblock %}

@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Pentest AI Platform{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-brand">
+            <span class="nav-logo">&#x1F6E1;</span>
+            <a href="{{ url_for('dashboard.index') }}">Pentest AI</a>
+        </div>
+        <div class="nav-links">
+            {% if session.get('user_id') %}
+            <a href="{{ url_for('dashboard.index') }}" class="nav-link {% if request.endpoint == 'dashboard.index' %}active{% endif %}">Dashboard</a>
+            <a href="{{ url_for('projects.list_projects') }}" class="nav-link {% if request.endpoint and 'projects' in request.endpoint %}active{% endif %}">Projects</a>
+            <a href="{{ url_for('scans.list_scans') }}" class="nav-link {% if request.endpoint and 'scans' in request.endpoint %}active{% endif %}">Scans</a>
+            <a href="{{ url_for('configs.list_configs') }}" class="nav-link {% if request.endpoint and 'configs' in request.endpoint %}active{% endif %}">Configurations</a>
+            {% if session.get('user_role') == 'admin' %}
+            <a href="{{ url_for('engine.health') }}" class="nav-link {% if request.endpoint and 'engine' in request.endpoint %}active{% endif %}">Engine</a>
+            {% endif %}
+            <a href="{{ url_for('reports.list_reports') }}" class="nav-link {% if request.endpoint and 'reports' in request.endpoint %}active{% endif %}">Reports</a>
+            <a href="{{ url_for('ai_assistant.index') }}" class="nav-link {% if request.endpoint and 'ai_assistant' in request.endpoint %}active{% endif %}">AI Assistant</a>
+            <div class="nav-notification" title="Notifications">
+                <span class="bell-icon">&#128276;</span>
+                <span class="badge-count hidden">0</span>
+                <div class="notification-dropdown">
+                    <div class="notification-dropdown-header">
+                        <h3>Notifications</h3>
+                        <button class="mark-all-read-btn">Mark all read</button>
+                    </div>
+                    <div class="notification-list">
+                        <div class="notification-empty">Loading...</div>
+                    </div>
+                </div>
+            </div>
+            <div class="nav-user">
+                <a href="{{ url_for('profile.view_profile') }}" class="nav-link" style="margin-right: 0.5rem;">Profile</a>
+                <span class="user-greeting">Hello, {{ current_user.username if current_user else 'User' }}</span>
+                <a href="{{ url_for('auth.logout') }}" class="btn btn-outline btn-sm">Logout</a>
+            </div>
+            {% else %}
+            <a href="{{ url_for('auth.login') }}" class="btn btn-outline btn-sm">Login</a>
+            <a href="{{ url_for('auth.register') }}" class="btn btn-primary btn-sm">Register</a>
+            {% endif %}
+        </div>
+    </nav>
+
+    <!-- Flash Messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    <div class="flash-container">
+        {% for category, message in messages %}
+        <div class="flash-message flash-{{ category }}">
+            <span>{{ message }}</span>
+            <button class="flash-close" onclick="this.parentElement.remove()">&times;</button>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+    {% endwith %}
+
+    <!-- Main Content -->
+    <main class="main-content">
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <p>&copy; 2026 Pentest AI Platform. Built for security professionals.</p>
+    </footer>
+
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>
