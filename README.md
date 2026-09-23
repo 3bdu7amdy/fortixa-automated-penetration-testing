@@ -21,25 +21,25 @@ A comprehensive web-based penetration testing orchestration platform built with 
 ## Screenshots
 
 ### Dashboard
-![Fortixa Dashboard](screenshots/dashboard.png)
+![Fortixa Dashboard](screenshots/Picture2.jpg)
 
 ### Project Management
-![Fortixa Project](screenshots/project.png)
+![Fortixa Project Management](screenshots/Picture3.jpg)
 
 ### Security Scan
-![Fortixa Security Scan](screenshots/new-scan.png)
-
-### Scan Results
-![Fortixa Scan Results](screenshots/scan-overview.png)
+![Fortixa Security Scan](screenshots/Picture21.jpg)
 
 ### Vulnerability Findings
-![Fortixa Vulnerability Findings](screenshots/vulnerability-results.png)
+![Fortixa Vulnerability Findings](screenshots/Picture8.jpg)
 
 ### AI Assistant
-![Fortixa AI Assistant](screenshots/ai-assistant.png)
+![Fortixa AI Assistant](screenshots/Picture18.jpg)
 
-### Security Reports
-![Fortixa Reports](screenshots/reports-management.png)
+### Report Generation
+![Fortixa Report Generation](screenshots/Picture27.jpg)
+
+### Reports Management
+![Fortixa Reports](screenshots/Picture31.jpg)
 
 ## Features
 - **Project Management** — Organize pentest engagements with projects, targets, and findings
