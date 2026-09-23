@@ -1,9 +1,47 @@
-# Pentest AI Platform
-
+# Fortixa
+### Automated AI-Powered Penetration Testing Platform
 A comprehensive web-based penetration testing orchestration platform built with Flask. Automates reconnaissance, vulnerability scanning, AI-powered analysis, and professional report generation.
+## Tech Stack
+
+- **Backend:** Python, Flask
+- **Database:** SQLAlchemy, SQLite
+- **Security Testing:** Nmap, Nuclei, SQLMap, Dalfox, Subfinder, Amass, and other security tools
+- **AI & Analysis:** AI-assisted vulnerability analysis and security recommendations
+- **Frontend:** HTML, CSS, JavaScript
+- **Testing:** Pytest
+
+## Project Highlights
+- Automated reconnaissance and vulnerability assessment
+- Multi-tool security testing through a unified platform
+- AI-assisted vulnerability analysis and recommendations
+- Automated security report generation
+- Role-based access control and target approval workflow
+- Built-in security hardening and validation mechanisms
+
+## Screenshots
+
+### Dashboard
+![Fortixa Dashboard](screenshots/dashboard.png)
+
+### Project Management
+![Fortixa Project](screenshots/project.png)
+
+### Security Scan
+![Fortixa Security Scan](screenshots/new-scan.png)
+
+### Scan Results
+![Fortixa Scan Results](screenshots/scan-overview.png)
+
+### Vulnerability Findings
+![Fortixa Vulnerability Findings](screenshots/vulnerability-results.png)
+
+### AI Assistant
+![Fortixa AI Assistant](screenshots/ai-assistant.png)
+
+### Security Reports
+![Fortixa Reports](screenshots/reports-management.png)
 
 ## Features
-
 - **Project Management** — Organize pentest engagements with projects, targets, and findings
 - **Target Management** — Add domains, IPs, URLs, and CIDR ranges with admin approval workflow
 - **Scan Orchestration** — Configure and run multi-tool scans with a task queue and background worker
